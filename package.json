@@ -2,6 +2,6 @@
   "name": "detective-sql",
   "version": "0.1.0",
   "private": true,
-  "description": "Detective game where clues, interrogations and arrests are resolved through SQL.",
+  "description": "Juego de detectives en el que pistas, interrogatorios y arrestos se resuelven con SQL.",
   "scripts": {}
 }

@@ -1,37 +1,37 @@
 # Detective SQL
 
-A detective game where every clue, interrogation and arrest is resolved through SQL.
+Juego de detectives en el que cada pista, interrogatorio y arresto se resuelve con consultas SQL.
 
-- **Frontend:** HTML, CSS and vanilla JavaScript
-- **Backend:** Node.js + Express (REST API)
-- **Database:** SQLite (local file, no external hosting)
+- **Frontend:** HTML, CSS y JavaScript
+- **Backend:** Node.js + Express (API REST)
+- **Base de datos:** SQLite (archivo local, sin hosting externo)
 
-> Work in progress. Setup instructions will be added once the backend and database scripts exist.
+> En desarrollo. Las instrucciones de instalación se completarán cuando existan el backend y los scripts de la base de datos.
 
-## Project structure
+## Estructura del proyecto
 
 ```text
 detective-sql/
-├── frontend/            # Static UI served by the backend
+├── frontend/            # Interfaz estática que sirve el backend
 │   ├── index.html
 │   ├── css/
 │   └── js/
-├── backend/             # Express REST API
+├── backend/             # API REST con Express
 │   ├── server.js
-│   ├── routes/          # HTTP route definitions
-│   ├── controllers/     # Request handlers
-│   └── database/        # SQLite connection and db:init script
+│   ├── routes/          # Definición de rutas HTTP
+│   ├── controllers/     # Manejo de las solicitudes
+│   └── database/        # Conexión a SQLite y script db:init
 ├── database/
-│   └── detective.sql    # Full schema + seed data, runnable on an empty database
-├── docs/                # Report, ER model (MER) and relational model (MR)
+│   └── detective.sql    # Esquema completo y datos, ejecutable sobre una base vacía
+├── docs/                # Informe, MER y modelo relacional (MR)
 ├── package.json
 └── README.md
 ```
 
-## Planned commands
+## Comandos previstos
 
 ```bash
 npm install
-npm run db:init   # create and seed a fresh SQLite database from database/detective.sql
-npm start         # start the API and serve the frontend
+npm run db:init   # crea y carga una base SQLite nueva a partir de database/detective.sql
+npm start         # levanta la API y sirve el frontend
 ```
