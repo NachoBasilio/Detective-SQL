@@ -8,6 +8,12 @@ Juego de detectives en el que cada pista, interrogatorio y arresto se resuelve c
 
 > En desarrollo. Las instrucciones de instalación se completarán cuando existan el backend y los scripts de la base de datos.
 
+## Participantes
+
+- Ignacio Nicolas Basilio Buracco (41.175.914) — Scrum master
+- Lucas Gabriel Ruiz (36.424.613) — Product Owner
+- Laureano Damián Iglesias (38.636.342)
+
 ## Estructura del proyecto
 
 ```text
