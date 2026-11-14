@@ -23,7 +23,11 @@ detective-sql/
 │   └── database/        # Conexión a SQLite y script db:init
 ├── database/
 │   └── detective.sql    # Esquema completo y datos, ejecutable sobre una base vacía
-├── docs/                # Informe, MER y modelo relacional (MR)
+├── docs/                # Informe, MER, modelo relacional (MR) y bitácora de IA
+├── Skills/              # Skills para agentes de IA (ver AGENTS.md)
+├── scripts/             # Scripts de soporte (validador de skills)
+├── AGENTS.md            # Reglas para agentes de IA
+├── CLAUDE.md            # Importa AGENTS.md para Claude Code
 ├── package.json
 └── README.md
 ```
@@ -32,6 +36,13 @@ detective-sql/
 
 ```bash
 npm install
-npm run db:init   # crea y carga una base SQLite nueva a partir de database/detective.sql
-npm start         # levanta la API y sirve el frontend
+npm run db:init           # crea y carga una base SQLite nueva a partir de database/detective.sql
+npm start                 # levanta la API y sirve el frontend
+npm run validate:skills   # valida las skills y los documentos para agentes (ya disponible)
 ```
+
+## Uso de IA
+
+- Las reglas para agentes están en [`AGENTS.md`](AGENTS.md); [`CLAUDE.md`](CLAUDE.md) lo importa para Claude Code.
+- Las skills del proyecto están en `Skills/<nombre>/SKILL.md`.
+- Todo uso relevante de IA se registra en [`docs/bitacora-ia.md`](docs/bitacora-ia.md), como exige la consigna.
