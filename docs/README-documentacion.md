@@ -24,7 +24,7 @@ Todo lo marcado como **Para completar por el equipo** en este documento. Nada de
 - [ ] Capturas de pantalla de la aplicación ([sección 2](#2-flujo-completo-de-una-partida)).
 - [ ] Capturas del MER y del modelo relacional dibujados en Miro ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo)).
 - [ ] Revisión final del MER generado con ayuda de IA ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo) y [sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
-- [ ] Prueba de instalación en Windows y con la versión de Node.js de cada integrante ([sección 13](#13-matriz-de-pruebas-y-resultados-verificables)).
+- [ ] Prueba de instalación en Windows y con la versión de Node.js de cada integrante: la suite ya pasó en Windows con Node.js 22.14.0; falta jugar una partida completa con `npm start` ([sección 13](#13-matriz-de-pruebas-y-resultados-verificables)).
 - [ ] Revisión de las decisiones que la bitácora marca como pendientes ([sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
 
 ## Equipo
@@ -681,6 +681,7 @@ Descartado por la consigna: React, Next.js, ORMs, servicios externos y autentica
 |---|---|---|---|
 | 2026-11-15 | Linux (WSL2), Node.js 25.1.0, npm 11.6.2 | `npm test` | 147 tests en 24 suites: 147 aprobados, 0 fallidos, 0 omitidos. |
 | 2026-11-15 | Copia limpia del repositorio, sin `node_modules` | `npm install`, `npm run db:init`, `npm test` | Instalación sin errores, base creada en `database/detective.db`, 147 de 147 tests aprobados. |
+| 2026-11-15 | Windows, Node.js 22.14.0 (prueba de un integrante del equipo) | `npm test` | 147 de 147 tests aprobados. Informado en el [comentario del PR #7](https://github.com/NachoBasilio/Detective-SQL/pull/7#issuecomment-6899521129). |
 
 Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearBase(':memory:')`), salvo el test de persistencia y los que comprueban que `crearBase` borra un archivo creado en una inicialización rechazada; esos usan archivos en una carpeta temporal del sistema y la borran al terminar.
 
@@ -760,7 +761,7 @@ Realizada el 2026-11-15 con `npm start` sobre una base recién creada con `npm r
 | Base creada antes de las correcciones de la auditoría (sin `evidencia.lugar_acreditado_id` ni los triggers nuevos) | `GET /api/escenas/1/evidencias` y el arresto responden 500 sin detalles; el arresto se revierte y la partida sigue `en_curso`. Después de `npm run db:reset`, la base tiene la columna y los triggers nuevos. |
 
 > [!IMPORTANT]
-> **Para completar por el equipo:** nada de esto se probó todavía en Windows, con la versión de Node.js de cada integrante, en Firefox o Safari, ni con lectores de pantalla. Registrar aquí cada prueba con fecha, sistema operativo, versión de Node.js, comandos ejecutados y resultado observado.
+> **Para completar por el equipo:** la suite de tests ya pasó en Windows con Node.js 22.14.0 (ver [Ejecución observada](#ejecución-observada)). Falta jugar una partida completa en Windows con `npm start`, probar con la versión de Node.js de cada integrante, en Firefox o Safari, y con lectores de pantalla. Registrar aquí cada prueba con fecha, sistema operativo, versión de Node.js, comandos ejecutados y resultado observado.
 
 ---
 
@@ -817,7 +818,7 @@ Detalle de las dos últimas filas: entradas "Correcciones de la auditoría final
 | Cierre del servidor | Enviar `SIGTERM` a `npm start` puede dejar el proceso de Node.js en ejecución, porque npm lo lanza a través de un intérprete de comandos. `Ctrl+C` lo cierra bien. | Documentar `node backend/server.js` como alternativa o manejar la señal en el script. |
 | Apertura de la base duplicada | `server.js` tiene su propia función `abrirBase`, separada de `crearBase`. | Moverla junto a `crearBase`, en `backend/database/`. |
 | Skill desactualizada | La skill `sqlite-schema` todavía menciona una tabla `Orden_Arresto`. | Alinearla con la tabla `acusacion`. |
-| Pruebas pendientes | No se probó en Windows, con otras versiones de Node.js, en Firefox o Safari, ni con lectores de pantalla. | Ver [sección 13](#13-matriz-de-pruebas-y-resultados-verificables). |
+| Pruebas pendientes | La suite de tests pasó en Windows con Node.js 22.14.0, pero no se jugó una partida completa en Windows ni se probó con otras versiones de Node.js, en Firefox o Safari, ni con lectores de pantalla. | Ver [sección 13](#13-matriz-de-pruebas-y-resultados-verificables). |
 
 ### Nuevas funciones
 

@@ -52,11 +52,21 @@ npm install
 
 - **Bases creadas antes de las correcciones de la auditoría (PR #6):** no tienen la columna `evidencia.lugar_acreditado_id` ni los triggers nuevos, y la API responde 500 al listar evidencias y al arrestar. Hay que recrearlas con `npm run db:reset` (operación destructiva: borra las partidas jugadas).
 - La base es un archivo local que Git ignora (`*.db` en [`.gitignore`](.gitignore)); nunca se sube al repositorio.
-- Para usar otra ruta, definir `DB_PATH` (relativa a la carpeta del proyecto o absoluta) en ese comando y también en `npm start`:
+- Para usar otra ruta, definir `DB_PATH` (relativa a la carpeta del proyecto o absoluta) en ese comando y también en `npm start`.
+
+  En bash (Linux, macOS, WSL o Git Bash), la variable va delante de cada comando:
 
   ```bash
   DB_PATH=database/prueba.db npm run db:init
   DB_PATH=database/prueba.db npm start
+  ```
+
+  En Windows PowerShell, la variable se define primero y vale para todos los comandos siguientes de esa consola, hasta cerrarla:
+
+  ```powershell
+  $env:DB_PATH = "database\prueba.db"
+  npm run db:init
+  npm start
   ```
 
 ## Ejecutar el juego
@@ -68,10 +78,14 @@ npm start
 - La consola muestra `Detective SQL disponible en http://localhost:3000`. Abrir esa dirección en el navegador.
 - El mismo servidor responde la API (`/api/...`) y sirve el frontend (`/`).
 - Para detenerlo, presionar `Ctrl+C` en la consola.
-- Para otro puerto, definir `PORT`: `PORT=4000 npm start`.
+- Para otro puerto, definir `PORT`. En bash: `PORT=4000 npm start`. En Windows PowerShell:
+
+  ```powershell
+  $env:PORT = "4000"
+  npm start
+  ```
 - Si la base no existe, el servidor no arranca y pide ejecutar `npm run db:init`.
 
-En Windows PowerShell las variables se definen antes del comando, por ejemplo `$env:PORT = "4000"` y después `npm start`.
 
 ## Ejecutar los tests
 
