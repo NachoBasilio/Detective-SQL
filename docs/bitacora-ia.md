@@ -50,6 +50,14 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Respuesta:** antes de programar se fijó el contrato JSON de cada endpoint. La IA generó el backend (`backend/`), 38 tests de API y el frontend (`frontend/`, con el sistema visual en `docs/design.md`). El culpable solo se devuelve en la respuesta del arresto; `GET /api/partidas/:id` no muestra ni el acusado ni el culpable. Una verificación independiente de la API no encontró bloqueantes (formatos, códigos, secreto del culpable, `ROLLBACK` e inyección SQL). El recorrido del frontend en un navegador sin interfaz encontró tres errores de presentación, que se corrigieron.
 - **Decisión:** aceptado para revisión. La aplicación no modifica el esquema ni repite las reglas de la base: ejecuta el SQL y traduce los errores de SQLite a códigos HTTP. Pendiente de revisión del equipo en el PR.
 
+### 2026-11-15 — README e informe técnico
+
+- **Integrante:** Ignacio Nicolas Basilio Buracco.
+- **Fase:** Documentación.
+- **Pedido:** escribir el README de instalación y la documentación técnica base para el informe final, con las quince secciones que pide la consigna.
+- **Respuesta:** `README.md` con requisitos, instalación desde cero, `db:init`, `npm start`, tests, URLs de la API, arquitectura, cómo jugar y cómo verificar la transacción y el `ROLLBACK`. `docs/README-documentacion.md` con las quince secciones, el diccionario de datos completo y la explicación de las diez consultas con resultados reales. Todos los comandos y resultados se ejecutaron antes de documentarlos. Lo que solo puede aportar el equipo quedó marcado como "Para completar por el equipo".
+- **Decisión:** pendiente de revisión del equipo. El equipo completa las capturas de Miro y de la aplicación, el documento del equipo y la revisión final del MER.
+
 ### 2026-11-15 — Correcciones de la auditoría final (PR #6)
 
 - **Integrante:** Ignacio Nicolas Basilio Buracco.
