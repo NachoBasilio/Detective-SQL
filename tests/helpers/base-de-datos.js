@@ -70,9 +70,48 @@ function afirmarRechazoSinCambios(conexion, operacion, errorEsperado) {
   assert.deepEqual(contarFilasPorTabla(conexion), filasAntes);
 }
 
+/**
+ * Inserta una evidencia de prueba y devuelve su id. La columna
+ * lugar_acreditado_id solo se escribe cuando el test la indica.
+ */
+function insertarEvidencia(conexion, {
+  escenaId,
+  tipo = 'registro_digital',
+  horaIndicio = null,
+  lugarAcreditadoId,
+  relevancia = 4,
+  descripcion = 'Evidencia de prueba.',
+}) {
+  const columnas = ['escena_id', 'tipo', 'descripcion', 'relevancia', 'hora_indicio'];
+  const valores = [escenaId, tipo, descripcion, relevancia, horaIndicio];
+  if (lugarAcreditadoId !== undefined) {
+    columnas.push('lugar_acreditado_id');
+    valores.push(lugarAcreditadoId);
+  }
+  // Los nombres de columna salen de una lista fija; los valores van como parámetros.
+  const marcadores = columnas.map(() => '?').join(', ');
+  return Number(
+    conexion
+      .prepare(`INSERT INTO evidencia (${columnas.join(', ')}) VALUES (${marcadores})`)
+      .run(...valores).lastInsertRowid,
+  );
+}
+
+/** Vincula un sospechoso con una evidencia. */
+function vincularSospechoso(conexion, sospechosoId, evidenciaId, tipoVinculo, peso = 5) {
+  conexion
+    .prepare(
+      `INSERT INTO sospechoso_evidencia (sospechoso_id, evidencia_id, tipo_vinculo, peso, observaciones)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run(sospechosoId, evidenciaId, tipoVinculo, peso, 'Vinculo de prueba.');
+}
+
 module.exports = {
   TABLAS_DEL_MODELO,
   leerConsultasDelScript,
   contarFilasPorTabla,
   afirmarRechazoSinCambios,
+  insertarEvidencia,
+  vincularSospechoso,
 };

@@ -2,7 +2,8 @@
 
 const { describe, test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { crearBase } = require('../../backend/database/crear-base');
+const fs = require('node:fs');
+const { crearBase, RUTA_SCRIPT_SQL } = require('../../backend/database/crear-base');
 const { afirmarRechazoSinCambios, contarFilasPorTabla } = require('../helpers/base-de-datos');
 
 const ID_CASO = 1;
@@ -15,6 +16,14 @@ describe('Transacciones de demostración del script', () => {
     conexion = crearBase(':memory:');
   });
   afterEach(() => conexion.close());
+
+  test('las demostraciones no cierran la partida con un UPDATE: lo hace el trigger', () => {
+    const script = fs.readFileSync(RUTA_SCRIPT_SQL, 'utf8');
+    const transacciones = script.slice(script.indexOf('4. Transacciones ejecutables'), script.indexOf('5. Vista'));
+    assert.doesNotMatch(transacciones.replace(/^\s*--.*$/gm, ''), /UPDATE\s+partida/i);
+    assert.match(transacciones, /\bCOMMIT;/);
+    assert.match(transacciones, /\bROLLBACK;/);
+  });
 
   test('el COMMIT deja una única partida perdida por acusar a un inocente', () => {
     const partidas = conexion.prepare('SELECT id, caso_id, estado FROM partida').all();
@@ -40,29 +49,26 @@ describe('Transacción de arresto desde la aplicación', () => {
   let arrestar;
   beforeEach(() => {
     conexion = crearBase(':memory:');
-    // Acción del juego: abrir partida, registrar la acusación y cerrar la
-    // partida con el resultado declarado, todo o nada.
-    arrestar = conexion.transaction((sospechosoId, resultado) => {
+    // Acción del juego: abrir partida y registrar la acusación, todo o nada.
+    // El cierre de la partida lo hace el trigger trg_acusacion_cerrar_partida
+    // dentro del INSERT; acá solo se lee el estado que guardó SQLite.
+    arrestar = conexion.transaction((sospechosoId) => {
       const partidaId = conexion.prepare('INSERT INTO partida (caso_id) VALUES (?)').run(ID_CASO).lastInsertRowid;
       conexion
         .prepare('INSERT INTO acusacion (partida_id, sospechoso_id) VALUES (?, ?)')
         .run(partidaId, sospechosoId);
-      conexion.prepare('UPDATE partida SET estado = ? WHERE id = ?').run(resultado, partidaId);
       return Number(partidaId);
     });
   });
   afterEach(() => conexion.close());
 
-  test('una transacción fallida hace ROLLBACK completo y no deja filas parciales', () => {
-    afirmarRechazoSinCambios(conexion, () => arrestar(ID_CARLA, 'perdida'), {
-      code: 'SQLITE_CONSTRAINT_TRIGGER',
-      message: 'El resultado no coincide con la acusacion',
-    });
+  test('una transacción fallida hace ROLLBACK completo y no deja la partida abierta en el intento', () => {
+    afirmarRechazoSinCambios(conexion, () => arrestar(999), { message: 'FOREIGN KEY constraint failed' });
     assert.equal(conexion.inTransaction, false);
   });
 
   test('la base sigue jugable: se puede crear una partida y ganar arrestando a la culpable', () => {
-    const partidaId = arrestar(ID_CARLA, 'ganada');
+    const partidaId = arrestar(ID_CARLA);
 
     assert.equal(conexion.prepare('SELECT estado FROM partida WHERE id = ?').pluck().get(partidaId), 'ganada');
     assert.equal(

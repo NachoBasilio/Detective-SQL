@@ -69,6 +69,25 @@ describe('Esquema creado por database/detective.sql', () => {
     assert.ok(columnasIndexadas(indicesSospechoso).includes('lugar_coartada_id'));
   });
 
+  test('evidencia distingue la escena del hallazgo del lugar acreditado, que es opcional', () => {
+    const columnas = conexion.pragma('table_info(evidencia)');
+    const columna = (nombre) => columnas.find((actual) => actual.name === nombre);
+    assert.equal(columna('escena_id').notnull, 1);
+    assert.equal(columna('lugar_acreditado_id').notnull, 0);
+    assert.equal(columna('hora_indicio').notnull, 0);
+
+    const clave = claveForaneaDe(conexion, 'evidencia', 'lugar_acreditado_id');
+    assert.equal(clave.table, 'lugar');
+    assert.equal(clave.to, 'id');
+    assert.equal(clave.on_delete, 'RESTRICT');
+    assert.equal(clave.on_update, 'CASCADE');
+
+    const columnasIndexadas = conexion
+      .pragma('index_list(evidencia)')
+      .flatMap((indice) => conexion.pragma(`index_info(${indice.name})`).map((columnaIndexada) => columnaIndexada.name));
+    assert.ok(columnasIndexadas.includes('lugar_acreditado_id'));
+  });
+
   test('partida no guarda fecha_fin: la fecha sale de la acusación', () => {
     assert.ok(!columnasDe(conexion, 'partida').includes('fecha_fin'));
     assert.ok(columnasDe(conexion, 'acusacion').includes('fecha_acusacion'));
@@ -121,6 +140,43 @@ describe('Datos semilla', () => {
       { nombre: 'Bruno Torres', lugar: 'Domicilio de Bruno' },
       { nombre: 'Carla Mendez', lugar: 'Restaurante Central' },
       { nombre: 'Diego Salas', lugar: 'Gimnasio Norte' },
+    ]);
+  });
+
+  test('solo acreditan un lugar las evidencias que registran dónde ocurrió el hecho', () => {
+    const acreditadas = conexion
+      .prepare(
+        `SELECT ev.id, l.nombre AS lugar, ev.hora_indicio
+         FROM evidencia ev
+         JOIN lugar l ON l.id = ev.lugar_acreditado_id
+         ORDER BY ev.id`,
+      )
+      .all();
+    assert.deepEqual(acreditadas, [
+      { id: 2, lugar: 'Archivo municipal', hora_indicio: '2026-11-09 21:29:00' },
+      { id: 5, lugar: 'Estacionamiento municipal', hora_indicio: '2026-11-09 21:19:00' },
+      { id: 6, lugar: 'Estacionamiento municipal', hora_indicio: '2026-11-09 21:22:00' },
+      { id: 7, lugar: 'Cafe Bahia', hora_indicio: '2026-11-09 21:08:00' },
+      { id: 8, lugar: 'Archivo municipal', hora_indicio: '2026-11-09 20:40:00' },
+      { id: 12, lugar: 'Archivo municipal', hora_indicio: null },
+      { id: 15, lugar: 'Cafe Bahia', hora_indicio: '2026-11-09 21:30:00' },
+      { id: 17, lugar: 'Estacionamiento municipal', hora_indicio: '2026-11-09 21:30:00' },
+      { id: 18, lugar: 'Restaurante Central', hora_indicio: '2026-11-09 21:12:00' },
+    ]);
+
+    const sinLugar = conexion
+      .prepare('SELECT id, hora_indicio FROM evidencia WHERE lugar_acreditado_id IS NULL ORDER BY id')
+      .all();
+    assert.deepEqual(sinLugar, [
+      { id: 1, hora_indicio: null },
+      { id: 3, hora_indicio: null },
+      { id: 4, hora_indicio: null },
+      { id: 9, hora_indicio: null },
+      { id: 10, hora_indicio: null },
+      { id: 11, hora_indicio: null },
+      { id: 13, hora_indicio: null },
+      { id: 14, hora_indicio: '2026-11-09 20:55:00' },
+      { id: 16, hora_indicio: null },
     ]);
   });
 
