@@ -43,12 +43,21 @@
   --espacio-6: 2rem;
   --espacio-7: 3rem;
 
-  /* Forma, profundidad y movimiento */
+  /* Forma, tamaños compartidos, profundidad y movimiento */
   --radio: 4px;
+  --borde-ancho: 1px;
+  --borde-ancho-activo: 3px;
+  --borde-ancho-sello: 3px;
+  --borde-ancho-sello-grande: 7px;
+  --control-altura-minima: max(44px, 2.75rem);
   --sombra-hoja: 0 1px 2px rgb(28 26 23 / 0.08), 0 12px 28px -16px rgb(28 26 23 / 0.35);
   --ancho-hoja: 68rem;
   --ancho-lectura: 70ch;
+  --ancho-tabla-estandar: 36rem;
+  --ancho-tabla-evidencias: 52rem;
+  --ancho-confirmacion: 44rem;
   --duracion: 180ms;
+  --duracion-sello: 360ms;
   --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -83,7 +92,7 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-foco);
+  outline: var(--borde-ancho-activo) solid var(--color-foco);
   outline-offset: 2px;
 }
 
@@ -163,7 +172,7 @@ a:hover {
 
 .cabecera {
   background: var(--color-hoja);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
 }
 
 .cabecera__interior,
@@ -215,9 +224,9 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-height: var(--control-altura-minima);
   padding: var(--espacio-2) var(--espacio-3);
-  border-bottom: 3px solid transparent;
+  border-bottom: var(--borde-ancho-activo) solid transparent;
   color: var(--color-texto);
   text-align: center;
   text-decoration: none;
@@ -297,7 +306,7 @@ a:hover {
 .aviso {
   margin-bottom: var(--espacio-5);
   padding: var(--espacio-3) var(--espacio-4);
-  border: 1px solid currentColor;
+  border: var(--borde-ancho) solid currentColor;
   border-radius: var(--radio);
   background: var(--color-aviso-fondo);
   color: var(--color-aviso-texto);
@@ -319,7 +328,7 @@ a:hover {
   gap: var(--espacio-3);
   max-width: var(--ancho-lectura);
   padding: var(--espacio-4);
-  border: 1px solid currentColor;
+  border: var(--borde-ancho) solid currentColor;
   border-radius: var(--radio);
   background: var(--color-error-fondo);
   color: var(--color-error-texto);
@@ -350,9 +359,9 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
+  min-height: var(--control-altura-minima);
   padding: var(--espacio-2) var(--espacio-5);
-  border: 1px solid transparent;
+  border: var(--borde-ancho) solid transparent;
   border-radius: var(--radio);
   font: inherit;
   font-weight: 700;
@@ -418,7 +427,7 @@ a:hover {
   align-content: start;
   gap: var(--espacio-1);
   padding-bottom: var(--espacio-2);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
 }
 
 .ficha dt {
@@ -433,14 +442,14 @@ a:hover {
 .lista-sospechosos {
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--color-borde);
+  border-top: var(--borde-ancho) solid var(--color-borde);
 }
 
 .lista-sospechosos > li {
   display: grid;
   gap: var(--espacio-3);
   padding-block: var(--espacio-4);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
 }
 
 .lista-sospechosos .ficha {
@@ -457,14 +466,14 @@ a:hover {
 .pestanas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-bottom: 1px solid var(--color-borde-control);
+  border-bottom: var(--borde-ancho) solid var(--color-borde-control);
 }
 
 .pestanas [role="tab"] {
-  min-height: 44px;
+  min-height: var(--control-altura-minima);
   padding: var(--espacio-2) var(--espacio-3);
   border: 0;
-  border-bottom: 3px solid transparent;
+  border-bottom: var(--borde-ancho-activo) solid transparent;
   background: transparent;
   color: var(--color-texto);
   font: inherit;
@@ -488,7 +497,7 @@ a:hover {
 .bloque + .bloque {
   margin-top: var(--espacio-6);
   padding-top: var(--espacio-5);
-  border-top: 1px solid var(--color-borde);
+  border-top: var(--borde-ancho) solid var(--color-borde);
 }
 
 .bloque > * + * {
@@ -500,25 +509,25 @@ a:hover {
 .tabla-contenedor {
   max-width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--color-borde);
+  border: var(--borde-ancho) solid var(--color-borde);
   border-radius: var(--radio);
   scrollbar-color: var(--color-borde-control) var(--color-hoja-alterna);
 }
 
 .tabla {
   width: 100%;
-  min-width: 36rem;
+  min-width: var(--ancho-tabla-estandar);
   border-collapse: collapse;
 }
 
 .tabla--evidencias {
-  min-width: 52rem;
+  min-width: var(--ancho-tabla-evidencias);
 }
 
 .tabla th,
 .tabla td {
   padding: var(--espacio-2) var(--espacio-3);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
   text-align: left;
   vertical-align: top;
 }
@@ -598,10 +607,10 @@ a:hover {
 }
 
 select {
-  min-height: 44px;
+  min-height: var(--control-altura-minima);
   max-width: 100%;
   padding: var(--espacio-2) var(--espacio-3);
-  border: 1px solid var(--color-borde-control);
+  border: var(--borde-ancho) solid var(--color-borde-control);
   border-radius: var(--radio);
   background: var(--color-hoja);
   color: var(--color-texto);
@@ -632,9 +641,9 @@ legend {
   grid-template-columns: auto 1fr;
   align-items: start;
   gap: 0 var(--espacio-3);
-  min-height: 44px;
+  min-height: var(--control-altura-minima);
   padding: var(--espacio-3) var(--espacio-4);
-  border: 1px solid var(--color-borde-control);
+  border: var(--borde-ancho) solid var(--color-borde-control);
   border-radius: var(--radio);
   cursor: pointer;
   transition: background-color var(--duracion) var(--curva-salida);
@@ -670,9 +679,9 @@ legend {
 .confirmacion {
   display: grid;
   gap: var(--espacio-4);
-  max-width: 44rem;
+  max-width: var(--ancho-confirmacion);
   padding: var(--espacio-5) var(--espacio-4);
-  border: 1px solid var(--color-peligro);
+  border: var(--borde-ancho) solid var(--color-peligro);
   border-radius: var(--radio);
 }
 
@@ -681,7 +690,7 @@ legend {
 .sello {
   display: inline-block;
   padding: 0.1em 0.6em;
-  border: 3px double currentColor;
+  border: var(--borde-ancho-sello) double currentColor;
   border-radius: var(--radio);
   font-family: var(--fuente-datos);
   font-weight: 700;
@@ -712,9 +721,9 @@ legend {
 
 .sello--grande {
   padding: 0.15em 0.7em;
-  border-width: 7px;
+  border-width: var(--borde-ancho-sello-grande);
   font-size: clamp(1.5rem, 1rem + 3vw, 2.5rem);
-  animation: sellar 360ms var(--curva-salida) both;
+  animation: sellar var(--duracion-sello) var(--curva-salida) both;
 }
 
 @keyframes sellar {

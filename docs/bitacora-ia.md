@@ -89,3 +89,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** llevar a `dev` el README y el informe, y revisar que la bitácora reflejara con exactitud el uso de IA.
 - **Respuesta:** el PR #7 se había mergeado contra `feat/aplicacion` y su contenido no llegó a `dev`. El PR #10 integra en `dev` el README y el informe técnico del PR #7, y actualiza la bitácora para reflejar las decisiones y correcciones realizadas. En la bitácora se reemplazaron las decisiones que figuraban como pendientes por lo que realmente se mergeó y se precisó que la IA dibujó en Mermaid el modelo definido por el equipo.
 - **Decisión:** aceptado. El equipo no oculta el uso de IA: el diseño de la base es del equipo, y la IA revisó, implementó y documentó sus decisiones.
+
+### 2026-11-15 — Consolidación del design system (Issue #9)
+
+- **Integrante:** Laureano Iglesias.
+- **Fase:** Aplicación.
+- **Pedido:** ordenar el sistema visual de la plataforma para reutilizar colores, medidas y componentes sin rediseñar la interfaz.
+- **Respuesta:** se documentaron los grupos de tokens y el catálogo de componentes en `docs/design.md`; se reemplazaron medidas repetidas de controles, bordes, tablas, confirmación y sellos por tokens en `frontend/css/estilos.css`; se agregaron pruebas que detectan valores compartidos fuera de `:root`.
+- **Decisión:** aceptado para revisión. Se conserva la identidad visual actual y se verificó en navegador que no haya desborde horizontal a 320, 768 y 1280 px.
