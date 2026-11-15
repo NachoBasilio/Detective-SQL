@@ -65,3 +65,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** aplicar en el PR #6 las tres observaciones no bloqueantes del juicio independiente del commit de auditoría.
 - **Respuesta:** I1: en C3, el registro digital incriminatorio que corrobora la presencia ahora tiene que acreditar el lugar de la escena principal, no solo haberse encontrado en ella. I2: `crearBase` borra el archivo de una creación rechazada solo si lo creó esa misma llamada; nunca borra una base existente. I3: se documentó la política efectiva de `ON UPDATE CASCADE`, que los triggers de inmutabilidad pueden rechazar. Antes de implementar, 3 tests nuevos fallaban; después, 147 de 147.
 - **Decisión:** aceptado para revisión. Con los datos semilla, C3 sigue devolviendo solo a Carla. Pendiente de revisión del equipo en el PR.
+
+### 2026-11-15 — Resultado del arresto después de recargar (PR #6)
+
+- **Integrante:** Ignacio Nicolas Basilio Buracco.
+- **Fase:** Aplicación.
+- **Pedido:** un integrante del equipo observó en el PR #6 que, al recargar la página después de un arresto, se perdía la pantalla de resultado, y propuso guardar la respuesta del arresto en `sessionStorage`.
+- **Respuesta:** el frontend guarda la respuesta del arresto en la sesión del navegador y, al recargar, restaura el resultado solo si corresponde a la partida guardada y su estado coincide con el que devuelve la API. Un resultado guardado que no coincide se descarta, e iniciar una partida nueva borra el anterior. `GET /api/partidas/:id` sigue sin devolver acusado ni culpable.
+- **Decisión:** aceptada la propuesta del equipo. Se descartó agregar un endpoint de resultado porque permitiría leer el culpable desde la partida de demostración sin jugar. Verificado en el navegador: perder y ganar, recargar, resultado alterado y partida nueva.
