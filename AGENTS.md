@@ -31,6 +31,7 @@ Antes de actuar, leer el `SKILL.md` que corresponda al contexto:
 |---|---|
 | Diseñar o modificar tablas, restricciones, triggers, consultas, vistas o transacciones | [`Skills/sqlite-schema/SKILL.md`](Skills/sqlite-schema/SKILL.md) |
 | Crear o modificar rutas, controladores o el acceso a la base desde Node | [`Skills/express-api/SKILL.md`](Skills/express-api/SKILL.md) |
+| Diseñar, crear o revisar pantallas, componentes, estilos o interacciones en `frontend/` | [`Skills/ui-ux/SKILL.md`](Skills/ui-ux/SKILL.md) |
 | Crear ramas, commits o pull requests | [`Skills/git-workflow/SKILL.md`](Skills/git-workflow/SKILL.md) |
 | Cualquier tarea en la que la IA proponga, genere o corrija algo | [`Skills/bitacora-ia/SKILL.md`](Skills/bitacora-ia/SKILL.md) |
 | Crear o migrar una skill | [`Skills/skill-creator/SKILL.md`](Skills/skill-creator/SKILL.md) |
