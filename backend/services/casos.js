@@ -68,8 +68,10 @@ function listarEscenas(baseDeDatos, casoId) {
 }
 
 /**
- * Consulta C1 del script filtrada por caso: evidencias con hora que ubican a
- * un sospechoso en un lugar distinto del declarado dentro de su coartada.
+ * Consulta C1 del script filtrada por caso: evidencias con hora que acreditan
+ * a un sospechoso en un lugar distinto del declarado dentro de su coartada.
+ * lugarObservado es el lugar acreditado por la evidencia, no el de la escena
+ * donde se encontró; sin lugar acreditado no hay contradicción.
  */
 function descartarCoartadas(baseDeDatos, casoId) {
   if (!existeCaso(baseDeDatos, casoId)) return null;
@@ -83,12 +85,11 @@ function descartarCoartadas(baseDeDatos, casoId) {
        JOIN lugar lugar_declarado ON lugar_declarado.id = s.lugar_coartada_id
        JOIN sospechoso_evidencia se ON se.sospechoso_id = s.id
        JOIN evidencia ev ON ev.id = se.evidencia_id
-       JOIN escena ec ON ec.id = ev.escena_id
-       JOIN lugar lugar_observado ON lugar_observado.id = ec.lugar_id
+       JOIN lugar lugar_observado ON lugar_observado.id = ev.lugar_acreditado_id
        WHERE s.caso_id = ?
          AND ev.hora_indicio IS NOT NULL
          AND ev.hora_indicio BETWEEN s.coartada_desde AND s.coartada_hasta
-         AND ec.lugar_id <> s.lugar_coartada_id
+         AND ev.lugar_acreditado_id <> s.lugar_coartada_id
        ORDER BY s.id, ev.hora_indicio, ev.id`,
     )
     .all(casoId);

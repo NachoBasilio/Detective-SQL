@@ -1,9 +1,15 @@
 'use strict';
 
 // Partidas y arrestos. Las reglas del juego (una sola acusación por partida,
-// sospechoso del mismo caso, partida en curso) las imponen los triggers, la
-// clave UNIQUE y las claves foráneas de SQLite: acá no se revalidan, y sus
-// errores llegan al controlador.
+// sospechoso del mismo caso, partida en curso, resultado según la culpabilidad)
+// las imponen los triggers, la clave UNIQUE y las claves foráneas de SQLite:
+// acá no se revalidan, y sus errores llegan al controlador.
+
+// Traducción del estado que guardó SQLite al resultado que ve el jugador.
+const RESULTADO_POR_ESTADO = new Map([
+  ['ganada', 'correcto'],
+  ['perdida', 'incorrecto'],
+]);
 
 function obtenerPartida(baseDeDatos, partidaId) {
   const partida = baseDeDatos
@@ -18,10 +24,11 @@ function crearPartida(baseDeDatos, casoId) {
 }
 
 /**
- * Registra el arresto en una única transacción: inserta la acusación, lee en
- * SQLite si el acusado es culpable y cierra la partida como ganada o perdida.
- * Si cualquier sentencia falla, better-sqlite3 hace ROLLBACK de todo.
- * Devuelve null cuando la partida no existe.
+ * Registra el arresto en una única transacción: inserta la acusación (el
+ * trigger trg_acusacion_cerrar_partida cierra la partida en esa misma
+ * sentencia) y lee el estado que guardó SQLite. El resultado sale de ese
+ * estado, sin recalcular la regla de victoria. Si cualquier paso falla,
+ * better-sqlite3 hace ROLLBACK de todo. Devuelve null cuando la partida no existe.
  */
 function registrarArresto(baseDeDatos, partidaId, sospechosoId) {
   const arrestar = baseDeDatos.transaction(() => {
@@ -32,22 +39,13 @@ function registrarArresto(baseDeDatos, partidaId, sospechosoId) {
       .run(partidaId, sospechosoId);
     const acusacionId = Number(lastInsertRowid);
 
-    const acusadoEsCulpable =
-      baseDeDatos
-        .prepare(
-          `SELECT s.es_culpable
-           FROM acusacion a
-           JOIN sospechoso s ON s.id = a.sospechoso_id
-           WHERE a.id = ?`,
-        )
-        .pluck()
-        .get(acusacionId) === 1;
-
-    baseDeDatos
-      .prepare('UPDATE partida SET estado = ? WHERE id = ?')
-      .run(acusadoEsCulpable ? 'ganada' : 'perdida', partidaId);
-
     const partida = baseDeDatos.prepare('SELECT id, caso_id AS casoId, estado FROM partida WHERE id = ?').get(partidaId);
+    const resultado = RESULTADO_POR_ESTADO.get(partida.estado);
+    // Una base creada sin el trigger de cierre dejaría la partida en curso:
+    // se revierte el arresto en lugar de confirmar un estado inconsistente.
+    if (resultado === undefined) {
+      throw new Error(`La base no cerró la partida ${partidaId} al registrar la acusación (estado: ${partida.estado}).`);
+    }
     const acusacion = baseDeDatos
       .prepare(
         `SELECT a.id, a.sospechoso_id AS sospechosoId, s.nombre, a.fecha_acusacion AS fechaAcusacion
@@ -64,7 +62,7 @@ function registrarArresto(baseDeDatos, partidaId, sospechosoId) {
     return {
       partida,
       acusacion,
-      resultado: acusadoEsCulpable ? 'correcto' : 'incorrecto',
+      resultado,
       culpable: culpable ?? null,
     };
   });
