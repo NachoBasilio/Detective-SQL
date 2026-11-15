@@ -33,3 +33,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** que la skill de UI/UX también se parezca a lo que propone Impeccable (https://impeccable.style/).
 - **Respuesta:** se sumaron a `Skills/ui-ux/SKILL.md` el contexto de diseño antes de construir (`docs/design.md`), el modo de cada pantalla del juego, el vocabulario de pedidos (`critique`, `audit`, `polish`, etc.), el piso de calidad y los anti-patrones de interfaces genéricas. No se instaló el CLI ni el detector de Impeccable.
 - **Decisión:** pendiente de revisión del equipo en el PR.
+
+### 2026-11-15 — Revisión del diseño del equipo y cierre del esquema SQL
+
+- **Integrante:** Ignacio Nicolas Basilio Buracco.
+- **Fase:** Modelo relacional y SQL.
+- **Pedido:** revisar contra la consigna oficial el diseño de 8 tablas del equipo y su script, y después aplicar las decisiones que tomó el equipo: tabla `lugar`, quitar `partida.fecha_fin`, dejar ejecutables el `COMMIT` y el `ROLLBACK`, agregar evidencias para que la matriz no revele la solución, generar el MER completo y escribir los tests de base de datos.
+- **Respuesta:** la revisión ejecutó el script y señaló que las transacciones estaban comentadas, que la matriz delataba a la culpable (18 contra 0) y que `escena` tenía la dependencia transitiva `ubicacion → tipo_lugar`. Con las decisiones del equipo, la IA generó `database/detective.sql` (9 tablas), `npm run db:init` y `npm run db:reset`, 50 tests con `node:test` y `docs/modelo-datos.md` con el MER en Mermaid para pasarlo a Miro. Una verificación independiente encontró que Elisa quedaba incriminada sin prueba exculpatoria y que la matriz seguía señalando a la culpable en un paso; se corrigió con dos evidencias nuevas y una condición de horario en el veredicto.
+- **Decisión:** el equipo eligió la tabla `lugar` frente a las alternativas (agregar `UNIQUE` o dejarlo igual). El MER generado por la IA debe ser revisado y dibujado por el equipo en Miro. Pendiente de revisión del equipo en el PR.
