@@ -110,7 +110,7 @@ Cómo se razona el caso: cada evidencia puede **incriminar**, **exculpar** o mos
 | 8 | Resultado | Ve si ganó o perdió y quién era el culpable | Ninguna: usa la respuesta del arresto | — |
 | 9 | Resultado | Presiona **Iniciar una partida nueva** | `POST /api/partidas` | Nueva fila en `partida`. Las anteriores quedan guardadas. |
 
-Si el jugador recarga la página, el frontend recupera la partida con `GET /api/partidas/:id`, que devuelve solo `id`, `casoId`, `estado` y `fechaInicio`.
+Si el jugador recarga la página, el frontend recupera la partida con `GET /api/partidas/:id`, que devuelve solo `id`, `casoId`, `estado` y `fechaInicio`. Si la partida ya terminó, la pantalla de resultado se restaura desde la respuesta del arresto que el navegador guardó en `sessionStorage`, solo si corresponde a esa partida y su estado coincide con el que devuelve la API; si no coincide, se muestra el aviso de que la partida terminó. Así, recargar no hace que la API tenga que revelar al culpable de una partida.
 
 Transacción del arresto (paso 7):
 
