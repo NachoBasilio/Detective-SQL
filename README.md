@@ -47,9 +47,10 @@ npm install
 
 | Comando | Qué hace |
 |---|---|
-| `npm run db:init` | Crea `database/detective.db` y ejecuta [`database/detective.sql`](database/detective.sql) completo (esquema, datos, consultas, transacciones y vista) con las claves foráneas activas. Si la base ya existe, no la toca y termina con error. |
+| `npm run db:init` | Crea `database/detective.db`, ejecuta [`database/detective.sql`](database/detective.sql) completo (esquema, datos, consultas, transacciones y vista) con las claves foráneas activas y comprueba que cada caso con sospechosos tenga exactamente un culpable. Si la base ya existe, no la toca y termina con error. Si la creación falla, borra el archivo a medio crear. |
 | `npm run db:reset` | **Operación destructiva.** Borra la base, con todas las partidas jugadas, y la vuelve a crear desde cero. |
 
+- **Bases creadas antes de las correcciones de la auditoría (PR #6):** no tienen la columna `evidencia.lugar_acreditado_id` ni los triggers nuevos, y la API responde 500 al listar evidencias y al arrestar. Hay que recrearlas con `npm run db:reset` (operación destructiva: borra las partidas jugadas).
 - La base es un archivo local que Git ignora (`*.db` en [`.gitignore`](.gitignore)); nunca se sube al repositorio.
 - Para usar otra ruta, definir `DB_PATH` (relativa a la carpeta del proyecto o absoluta) en ese comando y también en `npm start`:
 
@@ -78,7 +79,7 @@ En Windows PowerShell las variables se definen antes del comando, por ejemplo `$
 npm test
 ```
 
-- Ejecuta 93 tests con el runner integrado de Node.js (`node:test`): 55 de base de datos (`tests/database/`) y 38 de la API (`tests/api/`).
+- Ejecuta 147 tests con el runner integrado de Node.js (`node:test`): 104 de base de datos (`tests/database/`) y 43 de la API (`tests/api/`).
 - Cada test crea su propia base en memoria (o un archivo temporal del sistema): no hace falta `db:init` ni `npm start`, y nunca se modifica `database/detective.db`.
 - Para ejecutar un solo archivo: `node --test tests/database/consultas.test.js`.
 
@@ -95,7 +96,7 @@ Todas las respuestas son JSON. Los errores tienen la forma `{ "error": "<mensaje
 | GET | `/api/casos/:id` | Datos públicos del caso, con lugar y hora de la escena principal. |
 | GET | `/api/casos/:id/sospechosos` | Sospechosos con relación con la víctima y coartada. Nunca incluye `es_culpable`. |
 | GET | `/api/casos/:id/escenas` | Escenas del caso con su lugar y cantidad de evidencias. |
-| GET | `/api/escenas/:id/evidencias` | Evidencias de una escena con sus vínculos a sospechosos. |
+| GET | `/api/escenas/:id/evidencias` | Evidencias encontradas en una escena, cada una con su hora (`horaIndicio`), el lugar que acredita (`lugarAcreditado`, `null` si no acredita ninguno) y sus vínculos a sospechosos. |
 | GET | `/api/sospechosos/:id/interrogatorios` | Declaraciones y contradicciones de un sospechoso. |
 | GET | `/api/casos/:id/investigacion/coartadas` | Descarte de coartadas (consulta C1 filtrada por caso). |
 | GET | `/api/casos/:id/investigacion/matriz` | Matriz de evidencias, leída de la vista `vista_matriz_evidencias`. |
@@ -152,13 +153,14 @@ Un segundo `POST` a `/api/partidas/2/arrestos` responde 409 y el resultado no ca
 
 ## Cómo verificar la transacción y el ROLLBACK
 
-El arresto registra la acusación y cierra la partida dentro de una sola transacción: si una operación falla, se revierten todas.
+Al insertar la acusación, el trigger `trg_acusacion_cerrar_partida` cierra la partida en esa misma sentencia: si el cierre falla, SQLite revierte también la acusación. El arresto de la aplicación agrupa ese `INSERT` y las lecturas posteriores en una transacción: si un paso posterior falla, el `ROLLBACK` deshace la acusación y el cierre.
 
 | Qué verificar | Cómo | Resultado esperado |
 |---|---|---|
-| Demostraciones del script (`COMMIT` y `ROLLBACK`) | `node --test tests/database/transacciones.test.js` | 5 tests aprobados: la partida demo queda `perdida`, el caso sigue abierto y el `ROLLBACK` no deja filas. |
-| `ROLLBACK` de la aplicación ante una falla real | `node --test --test-name-pattern="ROLLBACK" tests/api/partidas.test.js` | 1 test aprobado. El test fuerza una falla al cerrar la partida, después de insertar la acusación: la API responde 500 sin texto de SQL, la acusación no queda guardada y la partida sigue `en_curso`. |
-| El script a mano (opcional, requiere `sqlite3`) | `sqlite3 -bail -header -column :memory: ".read database/detective.sql"` | Al final se ve la partida 1 `perdida` contra Diego Salas con el caso `abierto`, y `partidas_descartadas` y `acusaciones_descartadas` en 0. Se ejecuta en memoria: no modifica la base del juego. |
+| Demostraciones del script (`COMMIT` y `ROLLBACK`) | `node --test tests/database/transacciones.test.js` | 6 tests aprobados: el script no cierra la partida con un `UPDATE` (lo hace el trigger), la partida demo queda `perdida`, el caso sigue abierto, el `ROLLBACK` no deja filas, una transacción fallida no deja la partida del intento y la base sigue jugable. |
+| Cierre atómico sin `BEGIN` | `node --test --test-name-pattern="sentencia INSERT se revierte" tests/database/restricciones.test.js` | 1 test aprobado. Un trigger temporal hace fallar el cierre automático: el `INSERT` se rechaza completo, sin acusación y con la partida `en_curso`. |
+| `ROLLBACK` de la aplicación ante una falla real | `node --test --test-name-pattern="ROLLBACK" tests/api/partidas.test.js` | 1 test aprobado. El test fuerza una falla en la primera lectura posterior al `INSERT`, cuando la acusación y el cierre automático ya se ejecutaron: la API responde 500 sin texto de SQL, la acusación no queda guardada y la partida sigue `en_curso`. |
+| El script a mano (opcional, requiere `sqlite3`) | `sqlite3 -bail -header -column :memory: ".read database/detective.sql"` | Antes del `COMMIT` se ve la partida 1 ya `perdida` (`estado_antes_del_commit`), sin ningún `UPDATE`. Al final se ve la partida 1 `perdida` contra Diego Salas con el caso `abierto`, y `partidas_descartadas` y `acusaciones_descartadas` en 0. Se ejecuta en memoria: no modifica la base del juego. |
 | Desde el juego en marcha | Repetir el arresto de una partida terminada, o arrestar un sospechoso inexistente (`{ "sospechosoId": 99 }`) en una partida en curso. | 409 en el primer caso y 404 en el segundo. Con `GET /api/partidas/:id`, la primera sigue con su resultado original y la segunda sigue `en_curso`. |
 
 Explicación completa: [transacciones y ROLLBACK](docs/README-documentacion.md#9-explicación-de-transacciones-y-rollback).
@@ -190,7 +192,7 @@ Detective-SQL/
 │   ├── init-db.js            # npm run db:init y npm run db:reset
 │   └── validate-skills.sh    # npm run validate:skills
 ├── tests/
-│   ├── database/             # Esquema, datos, consultas, restricciones y transacciones
+│   ├── database/             # Esquema, datos, consultas, inicialización, restricciones y transacciones
 │   ├── api/                  # Endpoints, arrestos y aplicación Express
 │   └── helpers/              # Utilidades compartidas por los tests
 ├── Skills/                   # Skills para agentes de IA (ver AGENTS.md)

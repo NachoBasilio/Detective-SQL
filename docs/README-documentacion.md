@@ -83,13 +83,13 @@ Contenido de la semilla frente al mínimo de la consigna ("Un caso, 4 sospechoso
 | R2 | El jugador investiga con los datos de la base: escenas, evidencias, interrogatorios, coartadas y matriz de evidencias. | API: consultas `SELECT` parametrizadas |
 | R3 | Cada partida admite **un solo arresto**. | Base: `UNIQUE (partida_id)` en `acusacion` y trigger `trg_acusacion_validar_insert` |
 | R4 | Solo se puede arrestar a un sospechoso del caso de la partida. | Base: trigger `trg_acusacion_validar_insert` |
-| R5 | Arrestar al culpable deja la partida `ganada`; a un inocente, `perdida`. | Base: el resultado sale de `es_culpable` y el trigger `trg_partida_validar_cierre` lo controla |
-| R6 | Una partida terminada no cambia su resultado ni se reabre, y la acusación no se modifica ni se borra. | Base: triggers `trg_partida_validar_cierre`, `trg_acusacion_no_update` y `trg_acusacion_no_delete` |
+| R5 | Arrestar al culpable deja la partida `ganada`; a un inocente, `perdida`. | Base: al insertar la acusación, el trigger `trg_acusacion_cerrar_partida` cierra la partida según `es_culpable`, y `trg_partida_validar_cierre` controla que el resultado coincida |
+| R6 | Una partida terminada no cambia su resultado ni ningún otro dato, no se reabre, y la acusación no se modifica ni se borra. | Base: triggers `trg_partida_finalizada_inmutable`, `trg_acusacion_no_update` y `trg_acusacion_no_delete` |
 | R7 | El culpable no se revela antes del arresto. | API: ninguna consulta previa al arresto lee `es_culpable` |
 | R8 | El jugador puede iniciar una partida nueva en cualquier momento. Cada partida queda registrada. | API: `POST /api/partidas` |
 | R9 | Las partidas no cambian el estado del caso: el caso sigue `abierto` para nuevas partidas. | API: el arresto no modifica `caso` |
 
-Cómo se razona el caso: cada evidencia puede **incriminar**, **exculpar** o mostrar la **presencia** de un sospechoso, con un peso de 1 a 5. Algunas evidencias tienen una hora demostrada (`hora_indicio`). El culpable es quien reúne pruebas incriminatorias de distinto tipo en la escena principal, un registro digital cerca de las 21:30 y ninguna prueba que lo ubique en otro lugar a esa hora.
+Cómo se razona el caso: cada evidencia puede **incriminar**, **exculpar** o mostrar la **presencia** de un sospechoso, con un peso de 1 a 5. Algunas evidencias tienen una hora demostrada (`hora_indicio`) y un lugar acreditado (`lugar_acreditado_id`): el lugar donde ocurrió el hecho que prueban, que puede ser distinto de la escena donde se encontraron. El culpable es quien reúne pruebas incriminatorias de distinto tipo en la escena principal, un registro digital que acredita el lugar del crimen cerca de las 21:30 y ninguna prueba que lo ubique en otro lugar a esa hora.
 
 > [!IMPORTANT]
 > **Para completar por el equipo:** si lo desean, reescribir esta descripción y las reglas con palabras propias para el informe.
@@ -123,11 +123,11 @@ sequenceDiagram
     J->>F: Emitir orden de arresto
     F->>A: POST /api/partidas/2/arrestos con sospechosoId 3
     A->>B: BEGIN
+    A->>B: SELECT de la partida (comprueba que exista)
     A->>B: INSERT INTO acusacion
-    Note over B: Trigger: partida en curso y sospechoso del mismo caso<br/>UNIQUE: un arresto por partida
-    A->>B: SELECT es_culpable del acusado
-    A->>B: UPDATE partida SET estado ganada o perdida
-    Note over B: trg_partida_validar_cierre: el resultado coincide con la acusación
+    Note over B: trg_acusacion_validar_insert: partida en curso y sospechoso del mismo caso<br/>UNIQUE: un arresto por partida
+    Note over B: En la misma sentencia, trg_acusacion_cerrar_partida<br/>cierra la partida como ganada o perdida según es_culpable<br/>y trg_partida_validar_cierre controla el resultado
+    A->>B: SELECT del estado guardado, la acusación y el culpable
     A->>B: COMMIT, o ROLLBACK si algo falló
     A-->>F: 201 con partida, acusación, resultado y culpable
     F-->>J: Pantalla Resultado
@@ -148,7 +148,7 @@ sequenceDiagram
 | `lugar` | Un lugar físico con un único tipo. | Cafe Bahia (cafeteria) |
 | `sospechoso` | Una persona investigada, con su coartada y la marca de culpabilidad. | Carla Mendez |
 | `escena` | Un lugar y un momento relevantes para el caso. | Archivo municipal, 21:30, principal |
-| `evidencia` | Una pista encontrada en una escena. | Huella sobre el arma |
+| `evidencia` | Una pista encontrada en una escena. Puede acreditar un hecho ocurrido en otro lugar. | Ticket hallado en el archivo que acredita Restaurante Central |
 | `sospechoso_evidencia` | Entidad asociativa: cómo una evidencia afecta a un sospechoso. | La huella incrimina a Carla con peso 5 |
 | `interrogatorio` | Una declaración de un sospechoso y la contradicción detectada. | "No entre al archivo esa noche." |
 | `partida` | Un intento de resolver el caso. | Partida 1, `perdida` |
@@ -163,13 +163,14 @@ sequenceDiagram
 | caso – partida | 1 : N | Un caso se juega en cero o más partidas. | FK `partida.caso_id` |
 | lugar – escena | 1 : N | Un lugar aloja cero o más escenas. | FK `escena.lugar_id` |
 | lugar – sospechoso | 1 : N | Un lugar es la coartada de cero o más sospechosos. | FK `sospechoso.lugar_coartada_id` |
-| escena – evidencia | 1 : N | Una escena contiene cero o más evidencias; cada evidencia está en una escena. | FK `evidencia.escena_id` |
+| lugar – evidencia | 0..1 : N | Un lugar es acreditado por cero o más evidencias; cada evidencia acredita como máximo un lugar (el lugar donde ocurrió el hecho que prueba). | FK `evidencia.lugar_acreditado_id`, que admite `NULL` |
+| escena – evidencia | 1 : N | Una escena contiene cero o más evidencias; cada evidencia se encontró en una escena. | FK `evidencia.escena_id` |
 | sospechoso – evidencia | N : M | Un sospechoso se vincula con muchas evidencias y una evidencia con muchos sospechosos. El vínculo tiene atributos propios. | Tabla `sospechoso_evidencia` con PK compuesta |
 | sospechoso – interrogatorio | 1 : N | Un sospechoso declara en cero o más interrogatorios. | FK `interrogatorio.sospechoso_id` |
 | partida – acusacion | 1 : 0..1 | Una partida en curso no tiene acusación; una partida terminada tiene exactamente una. | FK `acusacion.partida_id` con `UNIQUE` |
 | sospechoso – acusacion | 1 : N | Un sospechoso puede ser acusado en muchas partidas. | FK `acusacion.sospechoso_id` |
 
-Que una partida terminada tenga exactamente una acusación lo garantizan juntos el `UNIQUE` de `acusacion.partida_id` y el trigger `trg_partida_validar_cierre`, que no deja cerrar una partida sin acusación.
+Que una partida terminada tenga exactamente una acusación lo garantizan juntos el `UNIQUE` de `acusacion.partida_id`, el trigger `trg_acusacion_cerrar_partida`, que cierra la partida en la misma sentencia que inserta la acusación, y el trigger `trg_partida_validar_cierre`, que no deja cerrar una partida sin acusación.
 
 ---
 
@@ -177,7 +178,7 @@ Que una partida terminada tenga exactamente una acusación lo garantizan juntos 
 
 El MER completo, con atributos, PK, FK y cardinalidades en notación pata de gallo, está en [`docs/modelo-datos.md`](modelo-datos.md#mer) como diagrama Mermaid, listo para pasarlo a Miro.
 
-Resumen: 9 tablas (8 entidades y 1 entidad asociativa) y 10 relaciones, detalladas en la [sección 3](#3-entidades-relaciones-y-cardinalidades). En el diagrama, la relación N:M entre sospechoso y evidencia se dibuja como dos líneas hacia `sospechoso_evidencia`, por eso aparecen 11 líneas.
+Resumen: 9 tablas (8 entidades y 1 entidad asociativa) y 11 relaciones, detalladas en la [sección 3](#3-entidades-relaciones-y-cardinalidades). En el diagrama, la relación N:M entre sospechoso y evidencia se dibuja como dos líneas hacia `sospechoso_evidencia`, por eso aparecen 12 líneas.
 
 ### Modelo relacional
 
@@ -187,7 +188,7 @@ Notación: **negrita** = clave primaria, *cursiva* = clave foránea.
 - lugar(**id**, nombre, tipo_lugar)
 - sospechoso(**id**, *caso_id*, nombre, coartada, *lugar_coartada_id*, coartada_desde, coartada_hasta, relacion_victima, es_culpable)
 - escena(**id**, *caso_id*, *lugar_id*, hora_suceso, es_principal)
-- evidencia(**id**, *escena_id*, tipo, descripcion, relevancia, hora_indicio)
+- evidencia(**id**, *escena_id*, tipo, descripcion, relevancia, hora_indicio, *lugar_acreditado_id*)
 - sospechoso_evidencia(***sospechoso_id***, ***evidencia_id***, tipo_vinculo, peso, observaciones)
 - interrogatorio(**id**, *sospechoso_id*, fecha_hora, declaracion, contradiccion_detectada)
 - partida(**id**, *caso_id*, fecha_inicio, estado)
@@ -228,7 +229,10 @@ Dependencias transitivas eliminadas:
 | `evidencia.id → escena_id → caso_id` | `evidencia` no guarda `caso_id`: el caso se obtiene por la escena. |
 | `partida.fecha_fin` repetiría `acusacion.fecha_acusacion` | Se eliminó `fecha_fin`. |
 
-Observación para la defensa: `partida.estado` (`ganada` o `perdida`) también se podría deducir de la acusación y de `es_culpable`. El esquema lo guarda porque además existe el estado `en_curso` y porque la API lo consulta sin `JOIN`. La redundancia está controlada: el trigger `trg_partida_validar_cierre` impide guardar un estado que contradiga la acusación.
+Observaciones para la defensa:
+
+- `partida.estado` (`ganada` o `perdida`) también se podría deducir de la acusación y de `es_culpable`. El esquema lo guarda porque además existe el estado `en_curso` y porque la API lo consulta sin `JOIN`. La redundancia está controlada por triggers: `trg_acusacion_cerrar_partida` calcula el estado a partir de `es_culpable` en la misma sentencia que inserta la acusación, `trg_partida_validar_cierre` impide guardar un estado que contradiga la acusación y `trg_partida_finalizada_inmutable` impide cambiarlo después.
+- `evidencia.lugar_acreditado_id` no repite el lugar de la escena: es un hecho propio de cada evidencia (dónde ocurrió lo que demuestra), puede ser distinto del lugar donde se encontró o desconocido, y depende solo de `evidencia.id`. No agrega dependencias transitivas.
 
 ---
 
@@ -236,9 +240,9 @@ Observación para la defensa: `partida.estado` (`ganada` o `perdida`) también s
 
 Convenciones:
 
-- **Tipos:** SQLite usa `INTEGER` y `TEXT`. Las fechas se guardan como texto `AAAA-MM-DD HH:MM:SS` (`caso.fecha_apertura`, como `AAAA-MM-DD`): así se ordenan y comparan bien con `BETWEEN` y `julianday`. Los booleanos son `INTEGER` 0 o 1.
+- **Tipos:** SQLite usa `INTEGER` y `TEXT`. Las fechas se guardan como texto `AAAA-MM-DD HH:MM:SS` (`caso.fecha_apertura`, como `AAAA-MM-DD`): así se ordenan y comparan bien con `BETWEEN`, y `strftime('%s', ...)` las convierte a segundos enteros para calcular diferencias exactas. Los booleanos son `INTEGER` 0 o 1.
 - **`id INTEGER PRIMARY KEY`:** alias del `rowid`; SQLite asigna el valor si no se indica.
-- **Claves foráneas:** todas son `ON DELETE RESTRICT ON UPDATE CASCADE`: no se puede borrar un registro referenciado y un cambio de `id` se propaga.
+- **Claves foráneas:** todas son `ON DELETE RESTRICT ON UPDATE CASCADE`: no se puede borrar un registro referenciado y un cambio de `id` se propaga, salvo que un trigger de inmutabilidad rechace la cascada (ver [lo que la base no impone](#lo-que-la-base-no-impone)).
 - **Nulo:** "No" significa `NOT NULL`.
 
 ### `caso`
@@ -271,7 +275,7 @@ Convenciones:
 | `coartada_desde` | TEXT | No | `CHECK (coartada_desde <= coartada_hasta)` (`ck_coartada_fechas`) | Inicio del horario declarado. |
 | `coartada_hasta` | TEXT | No | Mismo `CHECK` | Fin del horario declarado. |
 | `relacion_victima` | TEXT | No | — | Relación con la víctima (posible motivo). |
-| `es_culpable` | INTEGER | No | `DEFAULT 0`, `CHECK` en `(0, 1)`; a lo sumo uno por caso (`uq_un_culpable_por_caso`); no cambia si hay arrestos (`trg_culpabilidad_historial`) | 1 si es el culpable. **Nunca se envía al frontend antes del arresto.** |
+| `es_culpable` | INTEGER | No | `DEFAULT 0`, `CHECK` en `(0, 1)`; a lo sumo uno por caso (`uq_un_culpable_por_caso`); exactamente uno por caso con sospechosos al inicializar (`validarCasosJugables`); no cambia si hay arrestos (`trg_culpabilidad_historial`) | 1 si es el culpable. **Nunca se envía al frontend antes del arresto.** |
 
 ### `escena`
 
@@ -292,7 +296,8 @@ Convenciones:
 | `tipo` | TEXT | No | `CHECK` en `('huella', 'ADN', 'objeto', 'registro_digital')` | Clase de prueba. El veredicto exige tipos distintos. |
 | `descripcion` | TEXT | No | — | Qué es la pista. |
 | `relevancia` | INTEGER | No | `CHECK (relevancia BETWEEN 1 AND 5)` | Importancia de la pista para la investigación. |
-| `hora_indicio` | TEXT | Sí | — | Hora demostrada del evento, si la prueba permite conocerla. Sin hora, la prueba no sirve para descartar una coartada. |
+| `hora_indicio` | TEXT | Sí | — | Hora del hecho que la prueba demuestra, si se conoce. Sin hora, la prueba no contradice una coartada (C1) ni sirve para descartar o corroborar en el veredicto (C3). |
+| `lugar_acreditado_id` | INTEGER | Sí | FK → `lugar.id`; índice `ix_evidencia_lugar_acreditado` | Lugar donde ocurrió el hecho que la prueba demuestra, si se conoce. Puede ser distinto del lugar de la escena: el ticket (evidencia 18) se encontró en el archivo y acredita Restaurante Central a las 21:12. C1 lo compara con el lugar de la coartada y C3 lo usa para descartar y para corroborar. Sin lugar acreditado, la prueba no ubica a nadie. |
 
 ### `sospechoso_evidencia`
 
@@ -323,7 +328,9 @@ Además, los triggers `trg_vinculo_caso_insert` y `trg_vinculo_caso_update` exig
 | `id` | INTEGER | No | PK | Número de partida. |
 | `caso_id` | INTEGER | No | FK → `caso.id`; índice `ix_partida_caso`; no cambia (`trg_partida_caso_inmutable`) | Caso que se juega. |
 | `fecha_inicio` | TEXT | No | `DEFAULT CURRENT_TIMESTAMP` (hora UTC) | Momento en que empezó la partida. |
-| `estado` | TEXT | No | `DEFAULT 'en_curso'`, `CHECK` en `('en_curso', 'ganada', 'perdida')`; triggers `trg_partida_no_insertar_finalizada` y `trg_partida_validar_cierre` | Estado de la partida. Solo pasa de `en_curso` a `ganada` o `perdida`, una vez y según la acusación. |
+| `estado` | TEXT | No | `DEFAULT 'en_curso'`, `CHECK` en `('en_curso', 'ganada', 'perdida')`; triggers `trg_partida_no_insertar_finalizada`, `trg_acusacion_cerrar_partida`, `trg_partida_validar_cierre` y `trg_partida_finalizada_inmutable` | Estado de la partida. Solo pasa de `en_curso` a `ganada` o `perdida` una vez: lo cambia SQLite al registrar la acusación, según `es_culpable` del acusado. |
+
+Una partida finalizada no cambia ningún dato: ni el estado, ni `fecha_inicio`, ni el caso (`trg_partida_finalizada_inmutable`).
 
 ### `acusacion`
 
@@ -334,7 +341,7 @@ Además, los triggers `trg_vinculo_caso_insert` y `trg_vinculo_caso_update` exig
 | `sospechoso_id` | INTEGER | No | FK → `sospechoso.id`; índice `ix_acusacion_sospechoso` | Persona arrestada. |
 | `fecha_acusacion` | TEXT | No | `DEFAULT CURRENT_TIMESTAMP` (hora UTC) | Momento del arresto. También es la fecha de fin de la partida. |
 
-Una acusación no se modifica ni se elimina (`trg_acusacion_no_update`, `trg_acusacion_no_delete`), y solo se registra en una partida en curso y contra un sospechoso de su caso (`trg_acusacion_validar_insert`).
+Una acusación no se modifica ni se elimina (`trg_acusacion_no_update`, `trg_acusacion_no_delete`), y solo se registra en una partida en curso y contra un sospechoso de su caso (`trg_acusacion_validar_insert`). Al insertarla, `trg_acusacion_cerrar_partida` cierra la partida en la misma sentencia.
 
 ---
 
@@ -346,7 +353,7 @@ Para verlas a mano (requiere `sqlite3`): `sqlite3 -header -column :memory: ".rea
 
 | Consulta | Pregunta que responde | Técnica principal | Filas |
 |---|---|---|---|
-| C1 | ¿Qué evidencias contradicen la coartada de cada sospechoso? | `JOIN` de 5 tablas | 6 |
+| C1 | ¿Qué evidencias contradicen la coartada de cada sospechoso? | `JOIN` de 4 tablas (`lugar` dos veces) | 6 |
 | C2 | ¿Cuánto incrimina y cuánto exculpa la evidencia a cada sospechoso? | `LEFT JOIN` + agregación condicional | 4 |
 | C3 | ¿Quién es el culpable según las pruebas? | `NOT EXISTS` + `GROUP BY` + `HAVING` | 1 |
 | C4 | ¿Dónde se encontró cada evidencia? | `JOIN` de 3 tablas | 18 |
@@ -361,7 +368,7 @@ Requisitos de la consigna:
 
 | Requisito | Dónde aparece |
 |---|---|
-| Un `JOIN` de 3 o más tablas | C1 (5 tablas), C3 (4 tablas), C4 (3 tablas) |
+| Un `JOIN` de 3 o más tablas | C1 (4 tablas, `lugar` dos veces), C3 (4 tablas), C4 (3 tablas) |
 | Un anti-join (`LEFT JOIN ... IS NULL`) | C5 |
 | Una subconsulta escalar | C6 |
 | Una agregación con `GROUP BY` y `HAVING` | C7 y C3 |
@@ -369,8 +376,8 @@ Requisitos de la consigna:
 
 ### C1. Descarte de coartadas
 
-- **Enunciado:** "Descartar coartadas por lugares observados dentro del horario declarado."
-- **Técnicas:** `JOIN` de `sospechoso`, `sospechoso_evidencia`, `evidencia`, `escena` y `lugar`; `lugar` se une dos veces con alias (lugar declarado y lugar observado); `BETWEEN` sobre fechas; comparación de identificadores (`ec.lugar_id <> s.lugar_coartada_id`); `DISTINCT`.
+- **Enunciado:** "Descartar coartadas por el lugar que acredita cada evidencia dentro del horario declarado."
+- **Técnicas:** `JOIN` de `sospechoso`, `sospechoso_evidencia`, `evidencia` y `lugar`; `lugar` se une dos veces con alias (lugar declarado en la coartada y lugar observado, que es el lugar acreditado por la evidencia, no el de la escena donde se encontró); `BETWEEN` sobre fechas; comparación de identificadores (`ev.lugar_acreditado_id <> s.lugar_coartada_id`); `DISTINCT`. Una evidencia sin lugar acreditado o sin hora no contradice ninguna coartada.
 - **Resultado con la semilla:**
 
 | Sospechoso | Lugar declarado | Lugar observado | Hora |
@@ -382,7 +389,7 @@ Requisitos de la consigna:
 | Carla Mendez | Restaurante Central | Archivo municipal | 21:29 |
 | Diego Salas | Gimnasio Norte | Estacionamiento municipal | 21:22 |
 
-- **Lectura:** los cuatro mintieron sobre su ubicación, como dice el caso. La consulta sola no señala al culpable, pero muestra que solo Carla aparece en la escena del crimen cerca de las 21:30.
+- **Lectura:** los cuatro mintieron sobre su ubicación, como dice el caso. La consulta sola no señala al culpable, pero muestra que solo Carla aparece en la escena del crimen cerca de las 21:30. El ticket de Carla (evidencia 18) se encontró en el archivo, pero acredita Restaurante Central, el lugar de su coartada, así que no aparece.
 - **Uso:** `GET /api/casos/:id/investigacion/coartadas` (misma lógica filtrada por caso), pestaña Coartadas.
 
 ### C2. Matriz de evidencias
@@ -404,23 +411,23 @@ Requisitos de la consigna:
 ### C3. Veredicto
 
 - **Enunciado:** "Veredicto deducido por pruebas independientes en escena principal."
-- **Técnicas:** `JOIN` de 4 tablas; subconsulta correlacionada `NOT EXISTS`; `GROUP BY` con `HAVING` sobre `COUNT(DISTINCT ...)`, `SUM` y `MAX(CASE ...)`; diferencia en minutos con `julianday(...) * 1440`.
-- **Condiciones**, todas sobre pruebas incriminatorias de la escena principal:
+- **Técnicas:** `JOIN` de 4 tablas; subconsulta correlacionada `NOT EXISTS`; `GROUP BY` con `HAVING` sobre `COUNT(DISTINCT ...)`, `SUM` y `MAX(CASE ...)`; diferencia de horarios en segundos enteros con `strftime('%s', ...)`: diez minutos son exactamente 600 segundos.
+- **Condiciones** (las tres primeras, sobre las pruebas incriminatorias halladas en la escena principal):
   1. Al menos 2 tipos de prueba distintos.
   2. Peso total de 8 o más.
-  3. Un registro digital con hora a 10 minutos o menos del crimen.
-  4. Ninguna prueba exculpatoria con hora a 10 minutos o menos del crimen. Una exculpatoria sin hora no alcanza para descartar.
+  3. Un registro digital que acredita el lugar de la escena principal, con hora a 600 segundos o menos del crimen. Un registro hallado en la escena que acredita otro lugar, o ninguno, no corrobora la presencia.
+  4. Ninguna prueba exculpatoria que acredite un lugar distinto del de la escena principal, con hora a 600 segundos o menos del crimen. Una exculpatoria sin lugar acreditado o sin hora no alcanza para descartar.
 - **No lee `es_culpable`:** deduce al culpable solo con las pruebas.
 - **Resultado con la semilla:** 1 fila, **Carla Mendez** (id 3).
 
 | Sospechoso | Por qué no resulta culpable |
 |---|---|
 | Elisa Rivas | Una sola prueba incriminatoria (un objeto, peso 3) y una cámara la ubica en el estacionamiento a las 21:30. |
-| Bruno Torres | Su registro digital es de las 20:55, lejos de las 21:30, y una cámara lo ubica en Cafe Bahia a las 21:30. |
+| Bruno Torres | Su único registro digital incriminatorio, el mensaje de las 20:55, está lejos de las 21:30 y no acredita ningún lugar; además, una cámara lo ubica en Cafe Bahia a las 21:30. |
 | Diego Salas | No tiene pruebas incriminatorias. |
-| Carla Mendez (culpable) | Huella, ADN, objeto y acceso digital a las 21:29, con peso 18. Su ticket exculpatorio no tiene hora, así que no la descarta. |
+| Carla Mendez (culpable) | Huella, ADN, objeto y acceso con credencial a las 21:29 que acredita el archivo, con peso 18. Su ticket exculpatorio acredita Restaurante Central a las 21:12, 18 minutos antes del crimen, así que no la descarta. |
 
-- **Uso:** no se expone como endpoint, porque revela la solución. Los tests la verifican, incluidos casos límite (una exculpatoria a 5 minutos descarta a Carla; una lejana, no).
+- **Uso:** no se expone como endpoint, porque revela la solución. Los tests la verifican, incluidos casos límite: diferencias de ±599 y ±600 segundos cuentan y ±601 no; una exculpatoria sin lugar acreditado, sin hora o que acredita la propia escena principal no descarta; y un registro digital que acredita otro lugar, o ninguno, no corrobora la presencia.
 
 ### C4. Evidencias con su lugar
 
@@ -477,41 +484,44 @@ Todas las ubicaciones son de [`database/detective.sql`](../database/detective.sq
 | Regla | Mecanismo | Nombre | Tabla | Línea |
 |---|---|---|---|---|
 | Las claves foráneas se verifican | `PRAGMA` | `foreign_keys = ON` | — | 5 |
-| No se borra un registro referenciado; un cambio de `id` se propaga | FK | `ON DELETE RESTRICT ON UPDATE CASCADE` | todas las FK | 39-42, 56-59, 73-74, 85-88, 97-98, 109-110, 118-121 |
+| No se borra un registro referenciado; un cambio de `id` se propaga, salvo que un trigger de inmutabilidad rechace la cascada | FK | `ON DELETE RESTRICT ON UPDATE CASCADE` | todas las FK | 39-42, 57-60, 79-82, 93-96, 105-106, 117-118, 126-129 |
 | Título de caso único | `UNIQUE` | `caso.titulo` | `caso` | 12 |
 | Estado de caso válido | `CHECK` | `caso.estado` | `caso` | 15-16 |
 | Cada lugar existe una vez, con un único tipo | `UNIQUE` | `lugar.nombre` | `lugar` | 23 |
 | Culpabilidad 0 o 1 | `CHECK` | `sospechoso.es_culpable` | `sospechoso` | 36 |
 | Nombre de sospechoso único dentro del caso | `UNIQUE` | `uq_sospechoso_nombre` | `sospechoso` | 37 |
 | La coartada empieza antes de terminar | `CHECK` | `ck_coartada_fechas` | `sospechoso` | 38 |
-| A lo sumo un culpable por caso | Índice único parcial | `uq_un_culpable_por_caso` | `sospechoso` | 47-48 |
-| Escena principal 0 o 1 | `CHECK` | `escena.es_principal` | `escena` | 55 |
-| A lo sumo una escena principal por caso | Índice único parcial | `uq_escena_principal_por_caso` | `escena` | 63-64 |
-| Tipo de evidencia válido | `CHECK` | `evidencia.tipo` | `evidencia` | 69 |
-| Relevancia entre 1 y 5 | `CHECK` | `evidencia.relevancia` | `evidencia` | 71 |
-| Tipo de vínculo válido | `CHECK` | `sospechoso_evidencia.tipo_vinculo` | `sospechoso_evidencia` | 80-81 |
-| Peso entre 1 y 5 | `CHECK` | `sospechoso_evidencia.peso` | `sospechoso_evidencia` | 82 |
-| Un vínculo por par sospechoso-evidencia | PK compuesta | `(sospechoso_id, evidencia_id)` | `sospechoso_evidencia` | 84 |
-| Estado de partida válido | `CHECK` | `partida.estado` | `partida` | 107-108 |
-| Un solo arresto por partida | `UNIQUE` | `acusacion.partida_id` | `acusacion` | 115 |
-| Las FK tienen índice para los `JOIN` | Índices | `ix_sospechoso_caso` a `ix_acusacion_sospechoso` | varias | 235-243 |
+| A lo sumo un culpable por caso | Índice único parcial | `uq_un_culpable_por_caso` | `sospechoso` | 48-49 |
+| Escena principal 0 o 1 | `CHECK` | `escena.es_principal` | `escena` | 56 |
+| A lo sumo una escena principal por caso | Índice único parcial | `uq_escena_principal_por_caso` | `escena` | 64-65 |
+| Tipo de evidencia válido | `CHECK` | `evidencia.tipo` | `evidencia` | 74 |
+| Relevancia entre 1 y 5 | `CHECK` | `evidencia.relevancia` | `evidencia` | 76 |
+| El lugar acreditado, si se indica, existe (admite `NULL`) | FK | `evidencia.lugar_acreditado_id` | `evidencia` | 78, 81-82 |
+| Tipo de vínculo válido | `CHECK` | `sospechoso_evidencia.tipo_vinculo` | `sospechoso_evidencia` | 88-89 |
+| Peso entre 1 y 5 | `CHECK` | `sospechoso_evidencia.peso` | `sospechoso_evidencia` | 90 |
+| Un vínculo por par sospechoso-evidencia | PK compuesta | `(sospechoso_id, evidencia_id)` | `sospechoso_evidencia` | 92 |
+| Estado de partida válido | `CHECK` | `partida.estado` | `partida` | 115-116 |
+| Un solo arresto por partida | `UNIQUE` | `acusacion.partida_id` | `acusacion` | 123 |
+| Las FK tienen índice para los `JOIN` | Índices | `ix_sospechoso_caso` a `ix_acusacion_sospechoso`, incluido `ix_evidencia_lugar_acreditado` | varias | 268-277 |
 
 ### Triggers
 
 | Regla | Trigger | Momento | Línea |
 |---|---|---|---|
-| Sospechoso y evidencia vinculados son del mismo caso (alta) | `trg_vinculo_caso_insert` | `BEFORE INSERT ON sospechoso_evidencia` | 125 |
-| Lo mismo al modificar el vínculo | `trg_vinculo_caso_update` | `BEFORE UPDATE OF sospechoso_id, evidencia_id ON sospechoso_evidencia` | 136 |
-| Solo se acusa en una partida en curso y a un sospechoso de su caso | `trg_acusacion_validar_insert` | `BEFORE INSERT ON acusacion` | 149 |
-| Una acusación no se modifica | `trg_acusacion_no_update` | `BEFORE UPDATE ON acusacion` | 162 |
-| Una acusación no se elimina | `trg_acusacion_no_delete` | `BEFORE DELETE ON acusacion` | 168 |
-| Una partida cierra solo con una acusación cuyo resultado coincide con la culpabilidad, y no se reabre | `trg_partida_validar_cierre` | `BEFORE UPDATE OF estado ON partida` | 176 |
-| Toda partida comienza en curso | `trg_partida_no_insertar_finalizada` | `BEFORE INSERT ON partida` | 190 |
-| Un sospechoso no cambia de caso | `trg_sospechoso_caso_inmutable` | `BEFORE UPDATE OF caso_id ON sospechoso` | 199 |
-| Una escena no cambia de caso | `trg_escena_caso_inmutable` | `BEFORE UPDATE OF caso_id ON escena` | 206 |
-| Una evidencia no cambia de escena | `trg_evidencia_escena_inmutable` | `BEFORE UPDATE OF escena_id ON evidencia` | 213 |
-| Una partida no cambia de caso | `trg_partida_caso_inmutable` | `BEFORE UPDATE OF caso_id ON partida` | 220 |
-| La culpabilidad no cambia si el sospechoso ya fue arrestado | `trg_culpabilidad_historial` | `BEFORE UPDATE OF es_culpable ON sospechoso` | 227 |
+| Sospechoso y evidencia vinculados son del mismo caso (alta) | `trg_vinculo_caso_insert` | `BEFORE INSERT ON sospechoso_evidencia` | 133 |
+| Lo mismo al modificar el vínculo | `trg_vinculo_caso_update` | `BEFORE UPDATE OF sospechoso_id, evidencia_id ON sospechoso_evidencia` | 144 |
+| Solo se acusa en una partida en curso y a un sospechoso de su caso | `trg_acusacion_validar_insert` | `BEFORE INSERT ON acusacion` | 157 |
+| Una acusación no se modifica | `trg_acusacion_no_update` | `BEFORE UPDATE ON acusacion` | 170 |
+| Una acusación no se elimina | `trg_acusacion_no_delete` | `BEFORE DELETE ON acusacion` | 176 |
+| Registrar una acusación cierra la partida en la misma sentencia: `ganada` si el acusado es culpable, `perdida` si es inocente | `trg_acusacion_cerrar_partida` | `AFTER INSERT ON acusacion` | 188 |
+| Una partida finalizada no se reabre ni cambia ningún dato (estado, `fecha_inicio`, caso) | `trg_partida_finalizada_inmutable` | `BEFORE UPDATE ON partida` | 201 |
+| Una partida en curso cierra solo con una acusación cuyo resultado coincide con la culpabilidad | `trg_partida_validar_cierre` | `BEFORE UPDATE OF estado ON partida` | 211 |
+| Toda partida comienza en curso | `trg_partida_no_insertar_finalizada` | `BEFORE INSERT ON partida` | 223 |
+| Un sospechoso no cambia de caso | `trg_sospechoso_caso_inmutable` | `BEFORE UPDATE OF caso_id ON sospechoso` | 232 |
+| Una escena no cambia de caso | `trg_escena_caso_inmutable` | `BEFORE UPDATE OF caso_id ON escena` | 239 |
+| Una evidencia no cambia de escena | `trg_evidencia_escena_inmutable` | `BEFORE UPDATE OF escena_id ON evidencia` | 246 |
+| Una partida no cambia de caso | `trg_partida_caso_inmutable` | `BEFORE UPDATE OF caso_id ON partida` | 253 |
+| La culpabilidad no cambia si el sospechoso ya fue arrestado | `trg_culpabilidad_historial` | `BEFORE UPDATE OF es_culpable ON sospechoso` | 260 |
 
 ### Reglas que se aplican en la aplicación
 
@@ -520,15 +530,18 @@ La aplicación no repite las reglas anteriores: ejecuta el SQL y traduce el erro
 | Regla | Ubicación |
 |---|---|
 | Claves foráneas activas en cada conexión | `crearBase` en [`backend/database/crear-base.js`](../backend/database/crear-base.js) y `abrirBase` en [`backend/server.js`](../backend/server.js); `crearApp` en [`backend/app.js`](../backend/app.js) rechaza una conexión sin ellas. |
-| El arresto es una transacción real | `registrarArresto` en [`backend/services/partidas.js`](../backend/services/partidas.js). |
-| El culpable no sale del backend antes del arresto | Ninguna consulta de [`backend/services/`](../backend/services/) selecciona `es_culpable`, salvo `registrarArresto`, que lo lee después de insertar la acusación. |
+| Exactamente un culpable en cada caso con sospechosos, al inicializar | `validarCasosJugables` en [`backend/database/crear-base.js`](../backend/database/crear-base.js): si un caso no lo cumple, `crearBase` falla con un error en español y borra el archivo solo si lo creó esa misma llamada, nunca una base que ya existía. |
+| El arresto es una transacción real | `registrarArresto` en [`backend/services/partidas.js`](../backend/services/partidas.js): agrupa el `INSERT` de la acusación (que cierra la partida por trigger) y las lecturas posteriores. No ejecuta un `UPDATE` de la partida: el resultado sale del estado que guardó SQLite. |
+| El culpable no sale del backend antes del arresto | Ninguna consulta de [`backend/services/`](../backend/services/) lee `es_culpable`, salvo `registrarArresto`, que busca al culpable después de insertar la acusación. |
 | Consultas parametrizadas (`?`), sin concatenar datos del usuario | Todos los archivos de [`backend/services/`](../backend/services/). |
 | Validación de formato de ids (entero positivo) | [`backend/controllers/utilidades.js`](../backend/controllers/utilidades.js). |
 | Traducción de errores de SQLite a HTTP | `ERRORES_AL_CREAR` y `ERRORES_AL_ARRESTAR` en [`backend/controllers/partidas.js`](../backend/controllers/partidas.js). |
 
 ### Lo que la base no impone
 
-- "Existe exactamente un culpable": el índice `uq_un_culpable_por_caso` garantiza **a lo sumo** uno. Que haya exactamente uno lo verifican los datos semilla y el test "existe exactamente un culpable por caso". Un `UPDATE` podría dejar un caso sin culpable (ver [sección 15](#15-mejoras-futuras)).
+- "Existe exactamente un culpable": el índice `uq_un_culpable_por_caso` garantiza **a lo sumo** uno. Que haya exactamente uno lo comprueba la inicialización (`validarCasosJugables`) y lo verifican los tests. Después de inicializar, un `UPDATE` de `es_culpable` podría dejar un caso sin culpable (ver [sección 15](#15-mejoras-futuras)). No se agregó un trigger porque bloquearía cargar un caso de a un sospechoso.
+- Que C3 coincida con `es_culpable`: lo garantizan los datos semilla y los tests. SQLite no mantiene sincronizadas las dos cosas: editar evidencias, vínculos o lugares acreditados puede hacer que C3 deduzca a otra persona, o a nadie, sin que la base lo impida.
+- Que cualquier `id` se pueda renumerar: las claves foráneas declaran `ON UPDATE CASCADE`, pero los triggers de inmutabilidad pueden rechazar la cascada y la sentencia completa falla. Con la semilla, cambiar el `id` del caso falla porque la cascada hacia `partida.caso_id` choca con `trg_partida_caso_inmutable` ("No se puede cambiar el caso de una partida"), y cambiar el `id` de una escena con evidencias falla porque la cascada choca con `trg_evidencia_escena_inmutable`. Una partida finalizada tampoco cambia su `id`: lo rechaza `trg_partida_finalizada_inmutable`. Cambiar el `id` de un lugar sí se propaga, por ejemplo a `evidencia.lugar_acreditado_id`.
 
 ---
 
@@ -536,13 +549,20 @@ La aplicación no repite las reglas anteriores: ejecuta el SQL y traduce el erro
 
 ### Por qué el arresto es una transacción
 
-Arrestar implica varias operaciones que deben ocurrir juntas:
+Arrestar implica varios pasos:
 
-1. Insertar la acusación.
-2. Leer si el acusado es culpable.
-3. Cerrar la partida como `ganada` o `perdida`.
+1. Comprobar que la partida exista.
+2. Insertar la acusación. En esa misma sentencia, el trigger `trg_acusacion_cerrar_partida` cierra la partida como `ganada` o `perdida` según `es_culpable` del acusado.
+3. Leer el estado que guardó SQLite, la acusación y el culpable para armar la respuesta.
 
-Una acusación sin partida cerrada, o una partida cerrada sin acusación, dejaría el juego en un estado inválido. Con una transacción, o se confirman todas (`COMMIT`) o no queda ninguna (`ROLLBACK`).
+Dos mecanismos distintos protegen el resultado:
+
+| Mecanismo | Qué garantiza |
+|---|---|
+| Trigger `trg_acusacion_cerrar_partida` (`AFTER INSERT ON acusacion`) | La acusación y el cierre de la partida ocurren en **una sola sentencia**. Una sentencia de SQLite es atómica: si el cierre falla, se revierte también la acusación. Esto vale aunque no haya `BEGIN`, incluso con SQL ejecutado a mano. |
+| Transacción explícita (`BEGIN` ... `COMMIT` o `ROLLBACK`) | Agrupa **varias sentencias**: si falla un paso posterior, también se revierten los anteriores que ya se ejecutaron. En el script agrupa crear la partida y registrar la acusación. En la aplicación, si falla una lectura posterior al `INSERT`, revierte la acusación y el cierre de la partida. |
+
+Para la defensa: sin `BEGIN` no puede quedar una acusación con la partida en curso, porque eso lo impide el trigger. Lo que evita la transacción explícita son otros estados parciales: una partida creada para un intento fallido (script) o una acusación confirmada cuya respuesta no se pudo armar (aplicación).
 
 ### Demostraciones del script
 
@@ -550,37 +570,42 @@ Sección 4 de [`database/detective.sql`](../database/detective.sql):
 
 | Demostración | Líneas | Qué hace | Estado final |
 |---|---|---|---|
-| `COMMIT` | 460-464 | Abre la partida 1 del caso 1, acusa a Diego Salas (inocente) y cierra la partida como `perdida`. Una consulta posterior (líneas 467-473) muestra el resultado. | Partida 1 `perdida`; el caso sigue `abierto`. |
-| `ROLLBACK` | 481-484 | Abre la partida 2 y registra una acusación, pero descarta todo con `ROLLBACK`. Dos consultas (líneas 487-488) cuentan las filas. | Ninguna fila de la partida 2. |
+| `COMMIT` | 514-519 | Abre la partida 1 del caso 1 y acusa a Diego Salas (inocente). No hay `UPDATE`: un `SELECT` antes del `COMMIT` (línea 518) muestra que el trigger ya cerró la partida como `perdida`. Una consulta posterior (líneas 522-528) muestra el resultado confirmado. | Partida 1 `perdida`; el caso sigue `abierto`. |
+| `ROLLBACK` | 537-540 | Abre la partida 2 y registra una acusación (el trigger la cierra como `perdida`), pero descarta todo con `ROLLBACK`: la partida, la acusación y el cierre. Dos consultas (líneas 543-544) cuentan las filas. | Ninguna fila de la partida 2. |
 
 - El script no provoca un error real: con `npm run db:init` o `sqlite3 -bail`, el primer error detiene la ejecución y la base quedaría a medio crear.
 - Ninguna demostración modifica el caso ni la investigación: la base queda lista para jugar. Por eso una base nueva ya tiene la partida 1 y la primera partida jugada es la 2.
 
 ### Transacción en la aplicación
 
-`registrarArresto` en [`backend/services/partidas.js`](../backend/services/partidas.js) usa `baseDeDatos.transaction(...)` de `better-sqlite3`: abre la transacción, ejecuta las sentencias y hace `COMMIT` si todas terminan bien. Si alguna lanza un error, hace `ROLLBACK` de todo y el error llega al controlador.
+`registrarArresto` en [`backend/services/partidas.js`](../backend/services/partidas.js) usa `baseDeDatos.transaction(...)` de `better-sqlite3`: abre la transacción, comprueba que la partida exista, inserta la acusación (el trigger cierra la partida) y lee el estado guardado, la acusación y el culpable. Si todo termina bien, hace `COMMIT`; si algún paso lanza un error, hace `ROLLBACK` de todo y el error llega al controlador.
+
+El backend no ejecuta un `UPDATE` de la partida ni repite la regla de victoria: el resultado (`correcto` o `incorrecto`) sale del estado que guardó SQLite. Si la partida siguiera `en_curso` después del `INSERT` (una base creada sin el trigger de cierre), lanza un error y el arresto se revierte.
 
 | Falla | Quién la detecta | Respuesta HTTP |
 |---|---|---|
 | La partida ya terminó | Trigger `trg_acusacion_validar_insert` (y `UNIQUE` de `acusacion.partida_id` como segunda barrera) | 409 |
 | Sospechoso de otro caso | Trigger `trg_acusacion_validar_insert` | 400 |
 | Sospechoso inexistente | FK `acusacion.sospechoso_id` | 404 |
-| Resultado que no coincide con la culpabilidad | Trigger `trg_partida_validar_cierre` | 500 (no puede ocurrir desde la API, que lee `es_culpable` antes del `UPDATE`) |
+| Falla del cierre automático | SQLite revierte la sentencia `INSERT` completa | 500, sin acusación y con la partida `en_curso` |
+| Falla en una lectura posterior al `INSERT` | `ROLLBACK` de la transacción | 500, sin acusación y con la partida `en_curso` |
+| La partida sigue `en_curso` después del `INSERT` (base sin el trigger de cierre) | `registrarArresto`, al leer el estado guardado | 500, con `ROLLBACK` del arresto |
 | Cualquier otro error | — | 500 con un mensaje genérico, sin texto de SQL |
 
 ### Cómo se verifica
 
 | Verificación | Comando | Qué comprueba |
 |---|---|---|
-| Demostraciones del script | `node --test tests/database/transacciones.test.js` | 5 tests: el `COMMIT` deja una partida perdida, el caso sigue abierto, el `ROLLBACK` no deja filas, una transacción fallida (resultado incorrecto rechazado por el trigger) hace `ROLLBACK` completo, y la base sigue jugable. |
-| Falla real en la API | `node --test --test-name-pattern="ROLLBACK" tests/api/partidas.test.js` | El test crea un trigger temporal que falla al cerrar la partida, **después** de insertar la acusación. Comprueba: respuesta 500 sin texto de SQL, ninguna transacción abierta, la misma cantidad de filas en todas las tablas, ninguna acusación guardada y la partida `en_curso`. |
-| Script a mano (opcional) | `sqlite3 -bail -header -column :memory: ".read database/detective.sql"` | Al final muestra la partida 1 `perdida` con el caso `abierto`, y `partidas_descartadas` y `acusaciones_descartadas` en 0. |
+| Demostraciones del script | `node --test tests/database/transacciones.test.js` | 6 tests: las demostraciones no cierran la partida con un `UPDATE` (lo hace el trigger), el `COMMIT` deja una partida perdida, el caso sigue abierto, el `ROLLBACK` no deja filas, una transacción fallida (crear una partida y acusar a un sospechoso inexistente) hace `ROLLBACK` completo y no deja la partida del intento, y la base sigue jugable. |
+| Atomicidad del trigger, sin `BEGIN` | `node --test --test-name-pattern="sentencia INSERT se revierte" tests/database/restricciones.test.js` | 1 test: un trigger temporal hace fallar el cierre automático; el `INSERT` se rechaza completo, sin acusación y con la partida `en_curso`. |
+| Falla real en la API | `node --test --test-name-pattern="ROLLBACK" tests/api/partidas.test.js` | 1 test: fuerza una falla en la primera sentencia preparada **después** del `INSERT`, cuando la acusación y el cierre automático ya se ejecutaron dentro de la transacción. Comprueba: respuesta 500 sin texto de SQL, ninguna transacción abierta, la misma cantidad de filas en todas las tablas, ninguna acusación guardada y la partida `en_curso`. |
+| Script a mano (opcional) | `sqlite3 -bail -header -column :memory: ".read database/detective.sql"` | Antes del `COMMIT` muestra la partida 1 ya `perdida` (`estado_antes_del_commit`); al final, la partida 1 `perdida` contra Diego Salas con el caso `abierto`, y `partidas_descartadas` y `acusaciones_descartadas` en 0. |
 
 ---
 
 ## 10. Explicación de la vista SQL
 
-`vista_matriz_evidencias` (línea 494 de [`database/detective.sql`](../database/detective.sql)) resume, por sospechoso, cuántas pruebas lo incriminan y cuánto pesan, cuántos vínculos de presencia tiene y cuánto peso exculpatorio suma.
+`vista_matriz_evidencias` (línea 550 de [`database/detective.sql`](../database/detective.sql)) resume, por sospechoso, cuántas pruebas lo incriminan y cuánto pesan, cuántos vínculos de presencia tiene y cuánto peso exculpatorio suma.
 
 | Columna | Significado |
 |---|---|
@@ -615,7 +640,7 @@ Un solo servidor local (`npm start`) sirve la API y el frontend en `http://local
 | Capa | Ubicación | Responsabilidad |
 |---|---|---|
 | Base de datos | [`database/detective.sql`](../database/detective.sql) | Esquema, reglas del juego (restricciones y triggers), datos, consultas, transacciones y vista. |
-| Creación de la base | [`backend/database/crear-base.js`](../backend/database/crear-base.js), [`scripts/init-db.js`](../scripts/init-db.js) | Ejecutar el script completo con las claves foráneas activas. Lo usan `db:init`, `db:reset` y todos los tests. |
+| Creación de la base | [`backend/database/crear-base.js`](../backend/database/crear-base.js), [`scripts/init-db.js`](../scripts/init-db.js) | Ejecutar el script completo con las claves foráneas activas y validar que cada caso con sospechosos tenga exactamente un culpable. Lo usan `db:init`, `db:reset` y todos los tests. |
 | Arranque | [`backend/server.js`](../backend/server.js) | Abrir la base (`DB_PATH`), activar las claves foráneas y escuchar en `PORT`. |
 | Aplicación | [`backend/app.js`](../backend/app.js) | Montar las rutas bajo `/api`, responder 404 en JSON a rutas desconocidas, servir `frontend/` y responder 500 sin detalles de SQL. |
 | Rutas | [`backend/routes/`](../backend/routes/) | Asociar cada URL con su controlador. |
@@ -654,21 +679,22 @@ Descartado por la consigna: React, Next.js, ORMs, servicios externos y autentica
 
 | Fecha | Entorno | Comando | Resultado |
 |---|---|---|---|
-| 2026-11-15 | Linux (WSL2), Node.js 25.1.0, npm 11.6.2 | `npm test` | 93 tests en 18 suites: 93 aprobados, 0 fallidos, 0 omitidos. |
-| 2026-11-15 | Copia limpia del repositorio, sin `node_modules` | `npm install`, `npm run db:init`, `npm test` | Instalación sin errores, base creada en `database/detective.db`, 93 de 93 tests aprobados. |
+| 2026-11-15 | Linux (WSL2), Node.js 25.1.0, npm 11.6.2 | `npm test` | 147 tests en 24 suites: 147 aprobados, 0 fallidos, 0 omitidos. |
+| 2026-11-15 | Copia limpia del repositorio, sin `node_modules` | `npm install`, `npm run db:init`, `npm test` | Instalación sin errores, base creada en `database/detective.db`, 147 de 147 tests aprobados. |
 
-Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearBase(':memory:')`), salvo el test de persistencia, que usa un archivo en una carpeta temporal del sistema y la borra al terminar.
+Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearBase(':memory:')`), salvo el test de persistencia y los que comprueban que `crearBase` borra un archivo creado en una inicialización rechazada; esos usan archivos en una carpeta temporal del sistema y la borran al terminar.
 
 | Archivo | Tests | Qué cubre |
 |---|---|---|
-| [`tests/database/esquema-y-datos.test.js`](../tests/database/esquema-y-datos.test.js) | 13 | Tablas, claves foráneas activas, tabla `lugar`, datos mínimos, un culpable, matriz que no delata. |
-| [`tests/database/consultas.test.js`](../tests/database/consultas.test.js) | 19 | Las diez consultas, casos límite del veredicto y la vista. |
-| [`tests/database/restricciones.test.js`](../tests/database/restricciones.test.js) | 18 | Claves foráneas, `CHECK`, arrestos y triggers entre casos. |
-| [`tests/database/transacciones.test.js`](../tests/database/transacciones.test.js) | 5 | `COMMIT`, `ROLLBACK` y transacción fallida. |
+| [`tests/database/esquema-y-datos.test.js`](../tests/database/esquema-y-datos.test.js) | 15 | Tablas, claves foráneas activas, tabla `lugar`, lugar acreditado opcional, datos mínimos, un culpable, matriz que no delata. |
+| [`tests/database/consultas.test.js`](../tests/database/consultas.test.js) | 47 | Las diez consultas, el lugar acreditado en C1, casos límite del veredicto (lugar acreditado y tolerancia de 600 segundos) y la vista. |
+| [`tests/database/inicializacion.test.js`](../tests/database/inicializacion.test.js) | 6 | Exactamente un culpable por caso: índice único parcial, validación al inicializar y limpieza del archivo de una creación rechazada. |
+| [`tests/database/restricciones.test.js`](../tests/database/restricciones.test.js) | 30 | Claves foráneas (incluido el lugar acreditado), `CHECK`, cierre automático de la partida, partidas finalizadas inmutables y triggers entre casos. |
+| [`tests/database/transacciones.test.js`](../tests/database/transacciones.test.js) | 6 | Demostraciones sin `UPDATE`, `COMMIT`, `ROLLBACK` y transacción fallida. |
 | [`tests/api/aplicacion.test.js`](../tests/api/aplicacion.test.js) | 6 | 404 y 400 en JSON, 500 sin detalles, archivos estáticos, claves foráneas obligatorias. |
-| [`tests/api/consultas.test.js`](../tests/api/consultas.test.js) | 18 | Endpoints GET, secreto del culpable, 400, 404 e inyección SQL por la ruta. |
-| [`tests/api/partidas.test.js`](../tests/api/partidas.test.js) | 14 | Creación de partidas, arrestos, 400, 404, 409, inyección SQL, `ROLLBACK` y persistencia. |
-| **Total** | **93** | 55 de base de datos y 38 de API. |
+| [`tests/api/consultas.test.js`](../tests/api/consultas.test.js) | 20 | Endpoints GET, lugar acreditado en evidencias y coartadas, secreto del culpable, 400, 404 e inyección SQL por la ruta. |
+| [`tests/api/partidas.test.js`](../tests/api/partidas.test.js) | 17 | Creación de partidas, arrestos, 400, 404, 409, inyección SQL, falla del cierre automático, `ROLLBACK`, resultado leído del estado guardado y persistencia. |
+| **Total** | **147** | 104 de base de datos y 43 de API. |
 
 ### Requisitos de la consigna para la base de datos
 
@@ -676,15 +702,15 @@ Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearB
 |---|---|---|
 | "Se crean todas las tablas." | se crean exactamente las nueve tablas del modelo (`esquema-y-datos`) | Aprobado |
 | "Se cargan los datos mínimos." | se cargan los datos mínimos del proyecto (`esquema-y-datos`) | Aprobado |
-| "Existe exactamente un culpable." | existe exactamente un culpable por caso (`esquema-y-datos`) | Aprobado |
+| "Existe exactamente un culpable." | existe exactamente un culpable por caso (`esquema-y-datos`); el índice único parcial impide un segundo culpable en el mismo caso; el índice único no impide dejar un caso sin culpable: lo detecta la validación; falla con un error claro si el script deja un caso sin culpable (`inicializacion`) | Aprobado |
 | "Las diez consultas SQL ejecutan correctamente." | el script define las consultas C1 a C10, cada una con su enunciado; las diez consultas son sentencias únicas que se ejecutan sin errores; un test por consulta (`consultas`) | Aprobado |
-| "La consulta de veredicto identifica al culpable correcto." | C3 deduce el veredicto sin leer la columna de culpabilidad, y cuatro casos límite de "C3 solo descarta por una prueba exculpatoria a la hora del crimen" (`consultas`) | Aprobado |
-| "Las claves foráneas impiden relaciones inválidas." | impiden crear una escena en un lugar inexistente; impiden declarar una coartada en un lugar inexistente; impiden borrar un lugar usado por una escena; impiden acusar a un sospechoso inexistente (`restricciones`) | Aprobado |
+| "La consulta de veredicto identifica al culpable correcto." | C3 deduce el veredicto sin leer la columna de culpabilidad; los 9 casos de "C3 solo descarta por una prueba exculpatoria que acredita otro lugar a la hora del crimen", los 15 de "C3 compara horarios en segundos enteros: tolerancia de 600 segundos" y los 3 de "C3: el registro digital que corrobora la presencia acredita el lugar del crimen" (`consultas`) | Aprobado |
+| "Las claves foráneas impiden relaciones inválidas." | impiden crear una escena en un lugar inexistente; impiden declarar una coartada en un lugar inexistente; impiden borrar un lugar usado por una escena; impiden acusar a un sospechoso inexistente; impiden acreditar una evidencia en un lugar inexistente; impiden borrar un lugar acreditado por una evidencia (`restricciones`) | Aprobado |
 | "Los CHECK rechazan valores fuera de rango." | rechazan una evidencia con relevancia 0; con relevancia 6; un estado de caso inválido; un estado de partida inválido; un tipo de vínculo inválido (`restricciones`) | Aprobado |
 | "No se pueden registrar dos arrestos en la misma partida." | no se pueden registrar dos arrestos en la misma partida (`restricciones`) | Aprobado |
-| "Los triggers de integridad funcionan." | una partida finalizada no puede reabrirse; no admite un nuevo arresto; no puede cerrarse sin acusación; el resultado debe coincidir con la culpabilidad del acusado; una partida no puede comenzar finalizada; una acusación registrada no puede modificarse ni eliminarse; impiden vincular una evidencia o acusar a un sospechoso de otro caso (`restricciones`) | Aprobado |
+| "Los triggers de integridad funcionan." | INSERT de una acusación correcta cierra automáticamente la partida como ganada; INSERT de una acusación incorrecta cierra automáticamente la partida como perdida; si falla el cierre automático, la sentencia INSERT se revierte completa; una partida finalizada no puede reabrirse; no admite cambios en sus datos históricos; no admite un nuevo arresto; una partida no puede cerrarse sin acusación; el resultado lo calcula SQLite y no puede cambiarse después del arresto; una partida no puede comenzar finalizada; una acusación registrada no puede modificarse ni eliminarse; impiden vincular una evidencia o acusar a un sospechoso de otro caso (`restricciones`) | Aprobado |
 | "La vista devuelve información correcta." | expone las columnas de la matriz y nunca la culpabilidad; devuelve los números correctos para Carla y Bruno; coincide con la matriz de la consulta C2 (`consultas`) | Aprobado |
-| "Una transacción fallida realiza ROLLBACK completo." | una transacción fallida hace ROLLBACK completo y no deja filas parciales (`transacciones`) | Aprobado |
+| "Una transacción fallida realiza ROLLBACK completo." | una transacción fallida hace ROLLBACK completo y no deja la partida abierta en el intento (`transacciones`); un ROLLBACK revierte la acusación y el cierre automático de la partida (`restricciones`) | Aprobado |
 | "Utilizar una base de datos temporal o en memoria" | Todos los tests usan `:memory:` o una carpeta temporal | Cumplido |
 
 ### Requisitos de la consigna para la API
@@ -695,7 +721,7 @@ Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearB
 | "GET /api/casos devuelve el caso." | GET /api/casos devuelve el caso (`api/consultas`) | Aprobado |
 | "GET de sospechosos no expone `es_culpable`." | GET de sospechosos devuelve nombre, relación con la víctima y coartada, sin exponer es_culpable; ninguna respuesta GET expone es_culpable ni un dato equivalente (`api/consultas`) | Aprobado |
 | "GET de escenas devuelve las escenas existentes." | GET de escenas devuelve las escenas existentes con su lugar y cantidad de evidencias (`api/consultas`) | Aprobado |
-| "GET de evidencias devuelve únicamente las correspondientes a la escena." | GET de evidencias devuelve únicamente las correspondientes a la escena, con sus vínculos; cada escena devuelve exactamente las evidencias que SQLite guarda para ella (`api/consultas`) | Aprobado |
+| "GET de evidencias devuelve únicamente las correspondientes a la escena." | GET de evidencias devuelve únicamente las correspondientes a la escena, con sus vínculos; GET de evidencias informa el lugar acreditado: el ticket hallado en el archivo acredita Restaurante Central a las 21:12; cada escena devuelve exactamente las evidencias que SQLite guarda para ella (`api/consultas`) | Aprobado |
 | "GET de interrogatorios devuelve declaraciones correctas." | GET de interrogatorios devuelve las declaraciones y contradicciones del sospechoso (`api/consultas`) | Aprobado |
 | "La matriz de evidencias se calcula desde SQLite." | la matriz de evidencias se calcula desde SQLite: refleja un vínculo nuevo (`api/consultas`) | Aprobado |
 | "POST /api/partidas crea una partida." | crea una partida en curso y la guarda en SQLite (`partidas`) | Aprobado |
@@ -708,7 +734,7 @@ Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearB
 | "Los parámetros inválidos se manejan correctamente." | los parámetros inválidos responden 400 sin registrar acusaciones; un casoId inválido o un cuerpo que no es JSON responde 400 y no crea filas (`partidas`); un id que no es un entero positivo responde 400 (`api/consultas`); un cuerpo JSON mal formado responde 400 en JSON (`aplicacion`) | Aprobado |
 | "Las consultas no permiten inyección SQL." | las consultas no permiten inyección SQL a través de la ruta (`api/consultas`); las consultas no permiten inyección SQL en el cuerpo ni en la ruta (`partidas`) | Aprobado |
 | "Verificar que las operaciones sean persistentes y que el estado de las partidas coincida con el resultado almacenado." | el resultado persiste al reabrir la base y coincide con la culpabilidad almacenada (`partidas`) | Aprobado |
-| Transacción de arresto con `ROLLBACK` | si falla una operación dentro del arresto, el ROLLBACK no deja la acusación y responde 500 sin SQL (`partidas`) | Aprobado |
+| Transacción de arresto con `ROLLBACK` | si falla el cierre automático dentro del arresto, no queda la acusación y responde 500 sin SQL; si falla una lectura posterior al INSERT, el ROLLBACK deshace la acusación y el cierre de la partida; el resultado sale del estado guardado por SQLite: si la base no cierra la partida, el arresto se revierte (`partidas`) | Aprobado |
 
 ### Verificación manual con el servidor en marcha
 
@@ -721,6 +747,7 @@ Realizada el 2026-11-15 con `npm start` sobre una base recién creada con `npm r
 | `GET /api/casos/abc` | 400 `{"error":"El identificador debe ser un número entero positivo."}` |
 | `GET /api/no-existe` | 404 `{"error":"La ruta solicitada no existe en la API."}` |
 | `GET /` | 200, `text/html` (frontend) |
+| `GET /api/escenas/1/evidencias` | 200, 11 evidencias, cada una con `lugarAcreditado` y `horaIndicio`; la 18 (ticket) acredita Restaurante Central a las 21:12, la 2 acredita Archivo municipal a las 21:29 y la 1 tiene `lugarAcreditado: null` |
 | `POST /api/partidas` con `{"casoId":1}` | 201, partida 2 `en_curso` |
 | `POST /api/partidas/2/arrestos` con `{"sospechosoId":2}` (Bruno) | 201, `resultado: "incorrecto"`, partida `perdida`, culpable Carla Mendez |
 | Segundo arresto en la partida 2 | 409 `{"error":"La partida ya terminó: solo se permite un arresto por partida."}` |
@@ -729,7 +756,8 @@ Realizada el 2026-11-15 con `npm start` sobre una base recién creada con `npm r
 | `POST /api/partidas/999/arrestos` | 404 `{"error":"La partida no existe."}` |
 | Arresto de un sospechoso inexistente (`{"sospechosoId":99}`) en una partida en curso | 404 `{"error":"El sospechoso no existe."}`; la partida sigue `en_curso` y no queda acusación |
 | `POST /api/partidas` con `{"casoId":"1"}` (texto) | 400 |
-| Consulta directa al archivo de la base después de jugar | Partida 1 `perdida` (Diego Salas), partida 2 `perdida` (Bruno Torres), partida 3 `ganada` (Carla Mendez) |
+| Consulta directa al archivo de la base después de jugar | Partida 1 `perdida` (Diego Salas), partida 2 `perdida` (Bruno Torres), partida 3 `ganada` (Carla Mendez) y partida 4 `en_curso` sin acusación (la del sospechoso inexistente) |
+| Base creada antes de las correcciones de la auditoría (sin `evidencia.lugar_acreditado_id` ni los triggers nuevos) | `GET /api/escenas/1/evidencias` y el arresto responden 500 sin detalles; el arresto se revierte y la partida sigue `en_curso`. Después de `npm run db:reset`, la base tiene la columna y los triggers nuevos. |
 
 > [!IMPORTANT]
 > **Para completar por el equipo:** nada de esto se probó todavía en Windows, con la versión de Node.js de cada integrante, en Firefox o Safari, ni con lectores de pantalla. Registrar aquí cada prueba con fecha, sistema operativo, versión de Node.js, comandos ejecutados y resultado observado.
@@ -760,6 +788,10 @@ El registro completo está en [`docs/bitacora-ia.md`](bitacora-ia.md), con el fo
 | Revisión del script del equipo: transacciones comentadas, matriz que delataba a la culpable (18 contra 0) y dependencia transitiva en `escena`. | El equipo eligió la tabla `lugar` frente a las alternativas (agregar `UNIQUE` o dejarlo igual), quitó `partida.fecha_fin` y pidió transacciones ejecutables y evidencias exculpatorias. |
 | Una verificación independiente encontró que Elisa quedaba incriminada sin prueba exculpatoria y que la matriz seguía señalando a la culpable. | Se agregaron dos evidencias (17 y 18) y la condición de horario de la consulta C3. |
 | El recorrido del frontend en un navegador sin interfaz encontró tres errores de presentación. | Se corrigieron. |
+| Una auditoría final del modelo (PR #6) encontró que C3 excluía una diferencia de exactamente diez minutos (calculaba con `julianday() * 1440`, que da 10.000000074505806), que las consultas usaban el lugar de la escena como lugar observado (por eso el ticket de Carla no tenía hora), que el backend cerraba la partida con un `UPDATE` aparte y que faltaban garantías sobre partidas finalizadas y sobre la cantidad de culpables. | H1: C3 compara en segundos enteros con `strftime('%s')` (600 segundos). H2: nueva columna `evidencia.lugar_acreditado_id`; C1 y C3 usan el lugar acreditado y el ticket guarda su hora real (21:12). H3: trigger `trg_acusacion_cerrar_partida`; el backend solo lee el estado guardado. H4: trigger `trg_partida_finalizada_inmutable` y `validarCasosJugables` al inicializar. Se agregó el campo `lugarAcreditado` a la API y la columna "Lugar acreditado" en Investigación. |
+| Un juicio independiente de esas correcciones dejó tres observaciones no bloqueantes. | I1: en C3, el registro digital que corrobora la presencia tiene que acreditar el lugar de la escena principal. I2: `crearBase` borra el archivo de una creación rechazada solo si lo creó esa misma llamada, nunca una base existente. I3: se documentó que los triggers de inmutabilidad pueden rechazar el `ON UPDATE CASCADE` declarado. |
+
+Detalle de las dos últimas filas: entradas "Correcciones de la auditoría final (PR #6)" y "Observaciones del juicio independiente (PR #6)" de [`docs/bitacora-ia.md`](bitacora-ia.md), y [`modelo-datos.md`](modelo-datos.md#lugar-del-hallazgo-y-lugar-acreditado).
 
 > [!IMPORTANT]
 > **Para completar por el equipo:**
@@ -778,7 +810,9 @@ El registro completo está en [`docs/bitacora-ia.md`](bitacora-ia.md), con el fo
 | Textos de la semilla sin tildes | Algunos textos se guardaron sin tildes ("victima", "Afirmo", "Cafe Bahia") y la aplicación los muestra tal como están. | Corregirlos en `database/detective.sql`. |
 | Partidas abandonadas | Iniciar una partida nueva deja la anterior `en_curso`: la API no tiene forma de abandonarla. | Agregar un estado o un endpoint para abandonar una partida. |
 | Errores de SQLite identificados por texto | La API reconoce cada error por un fragmento de su mensaje. Si se cambia el texto de un trigger, ese error pasa a responder 500. | Identificar los errores por un código estable o cubrir cada mensaje con un test. |
-| A lo sumo un culpable, no exactamente uno | Un `UPDATE` de `es_culpable` podría dejar un caso sin culpable. | Agregar un trigger que lo impida, o validarlo al cargar cada caso nuevo. |
+| Exactamente un culpable solo al inicializar | `validarCasosJugables` lo comprueba al crear la base. Después, un `UPDATE` de `es_culpable` podría dejar un caso sin culpable: el índice `uq_un_culpable_por_caso` solo impide un segundo. No se usó un trigger porque bloquearía cargar un caso de a un sospechoso. | Repetir la validación al cargar cada caso nuevo. |
+| C3 y `es_culpable` no están sincronizados | Si se editan a mano evidencias, vínculos o lugares acreditados, C3 puede deducir a otra persona, o a nadie, sin que la base lo impida. La coincidencia la sostienen los datos semilla y los tests. | Volver a ejecutar `npm test` después de cualquier cambio de datos, o comprobar al inicializar que C3 devuelve al culpable marcado. |
+| Cascadas limitadas por triggers | Las claves foráneas declaran `ON UPDATE CASCADE`, pero los triggers de inmutabilidad rechazan algunas cascadas: cambiar el `id` del caso o de una escena con evidencias falla. La integridad se conserva porque la sentencia completa falla. | No renumerar claves primarias de registros con historial. |
 | Hora de la acusación en UTC | SQLite guarda `CURRENT_TIMESTAMP` en UTC; el frontend la convierte a la hora local. | Tenerlo en cuenta al consultar la base directamente. |
 | Cierre del servidor | Enviar `SIGTERM` a `npm start` puede dejar el proceso de Node.js en ejecución, porque npm lo lanza a través de un intérprete de comandos. `Ctrl+C` lo cierra bien. | Documentar `node backend/server.js` como alternativa o manejar la señal en el script. |
 | Apertura de la base duplicada | `server.js` tiene su propia función `abrirBase`, separada de `crearBase`. | Moverla junto a `crearBase`, en `backend/database/`. |
