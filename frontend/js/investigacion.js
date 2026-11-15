@@ -111,14 +111,18 @@ function bloqueDeEscena(escena, evidencias) {
           { titulo: 'Tipo' },
           { titulo: 'Descripción', clase: 'texto-largo' },
           { titulo: 'Relevancia', clase: 'num' },
+          { titulo: 'Lugar acreditado' },
           { titulo: 'Hora del indicio', clase: 'dato' },
           { titulo: 'Vínculos con sospechosos', clase: 'texto-largo' },
         ],
+        // El lugar acreditado es donde ocurrió el hecho que prueba la evidencia;
+        // puede diferir de la escena donde se encontró (por ejemplo, un ticket).
         filas: evidencias.map((evidencia) => [
           evidencia.id,
           textoLegible(evidencia.tipo),
           evidencia.descripcion,
           evidencia.relevancia,
+          evidencia.lugarAcreditado ?? 'Sin lugar acreditado',
           evidencia.horaIndicio === null ? 'Sin hora' : formatearFecha(evidencia.horaIndicio),
           listaDeVinculos(evidencia.vinculos),
         ]),

@@ -260,9 +260,10 @@ describe('POST /api/partidas/:id/arrestos', () => {
     assert.equal(leerPartida(entorno.baseDeDatos, partidaId).estado, 'en_curso');
   });
 
-  test('si falla una operación dentro del arresto, el ROLLBACK no deja la acusación y responde 500 sin SQL', async (t) => {
+  test('si falla el cierre automático dentro del arresto, no queda la acusación y responde 500 sin SQL', async (t) => {
     const partidaId = await crearPartida(entorno.api);
-    // Falla forzada en el UPDATE de la partida, después del INSERT de la acusación.
+    // Falla forzada en el UPDATE que ejecuta el trigger de cierre: SQLite
+    // revierte la sentencia INSERT completa y el backend hace ROLLBACK.
     entorno.baseDeDatos.exec(`
       CREATE TEMP TRIGGER forzar_falla_al_cerrar_partida
       BEFORE UPDATE OF estado ON partida
@@ -283,6 +284,65 @@ describe('POST /api/partidas/:id/arrestos', () => {
     afirmarTablasIntactas(entorno.baseDeDatos, filasAntes);
     assert.equal(leerAcusacion(entorno.baseDeDatos, partidaId), undefined);
     assert.equal(leerPartida(entorno.baseDeDatos, partidaId).estado, 'en_curso');
+  });
+
+  test('si falla una lectura posterior al INSERT, el ROLLBACK deshace la acusación y el cierre de la partida', async (t) => {
+    const partidaId = await crearPartida(entorno.api);
+    const baseDeDatos = entorno.baseDeDatos;
+    const prepararOriginal = baseDeDatos.prepare;
+    let acusacionPreparada = false;
+    // Falla forzada en la primera sentencia preparada después del INSERT, cuando
+    // la acusación y el cierre automático ya se ejecutaron dentro de la transacción.
+    t.mock.method(baseDeDatos, 'prepare', function preparar(sql) {
+      if (acusacionPreparada) throw new Error('falla forzada después del INSERT');
+      if (/INSERT INTO acusacion/.test(sql)) acusacionPreparada = true;
+      return prepararOriginal.call(this, sql);
+    });
+    t.mock.method(console, 'error', () => {});
+    const filasAntes = contarFilasPorTabla(baseDeDatos);
+
+    const respuesta = await entorno.api.post(`/api/partidas/${partidaId}/arrestos`).send({ sospechosoId: ID_CARLA });
+    baseDeDatos.prepare.mock.restore();
+
+    assert.equal(acusacionPreparada, true);
+    assert.equal(respuesta.status, 500);
+    assert.deepEqual(respuesta.body, { error: 'Error interno del servidor.' });
+    assert.equal(baseDeDatos.inTransaction, false);
+    afirmarTablasIntactas(baseDeDatos, filasAntes);
+    assert.equal(leerAcusacion(baseDeDatos, partidaId), undefined);
+    assert.equal(leerPartida(baseDeDatos, partidaId).estado, 'en_curso');
+  });
+
+  test('el resultado sale del estado guardado por SQLite: si la base no cierra la partida, el arresto se revierte', async (t) => {
+    const partidaId = await crearPartida(entorno.api);
+    // Simula una base creada sin el trigger de cierre: el backend no calcula
+    // el resultado por su cuenta y no confirma una acusación con la partida en curso.
+    entorno.baseDeDatos.exec('DROP TRIGGER trg_acusacion_cerrar_partida');
+    t.mock.method(console, 'error', () => {});
+    const filasAntes = contarFilasPorTabla(entorno.baseDeDatos);
+
+    const respuesta = await entorno.api.post(`/api/partidas/${partidaId}/arrestos`).send({ sospechosoId: ID_CARLA });
+
+    assert.equal(respuesta.status, 500);
+    assert.deepEqual(respuesta.body, { error: 'Error interno del servidor.' });
+    afirmarTablasIntactas(entorno.baseDeDatos, filasAntes);
+    assert.equal(leerAcusacion(entorno.baseDeDatos, partidaId), undefined);
+    assert.equal(leerPartida(entorno.baseDeDatos, partidaId).estado, 'en_curso');
+  });
+
+  test('las partidas independientes no se afectan entre sí', async () => {
+    const ganada = await crearPartida(entorno.api);
+    const perdida = await crearPartida(entorno.api);
+    const enCurso = await crearPartida(entorno.api);
+
+    await entorno.api.post(`/api/partidas/${ganada}/arrestos`).send({ sospechosoId: ID_CARLA }).expect(201);
+    await entorno.api.post(`/api/partidas/${perdida}/arrestos`).send({ sospechosoId: ID_BRUNO }).expect(201);
+
+    const estados = await Promise.all([ID_PARTIDA_DEMO, ganada, perdida, enCurso].map(
+      async (id) => (await entorno.api.get(`/api/partidas/${id}`)).body.estado,
+    ));
+    assert.deepEqual(estados, ['perdida', 'ganada', 'perdida', 'en_curso']);
+    assert.equal(leerAcusacion(entorno.baseDeDatos, enCurso), undefined);
   });
 });
 

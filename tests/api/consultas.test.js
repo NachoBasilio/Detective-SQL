@@ -2,7 +2,7 @@
 
 const { describe, test, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { leerConsultasDelScript } = require('../helpers/base-de-datos');
+const { leerConsultasDelScript, insertarEvidencia, vincularSospechoso } = require('../helpers/base-de-datos');
 const {
   ID_CASO,
   ID_ELISA,
@@ -129,18 +129,38 @@ describe('GET de la API sobre la base semilla', () => {
     assert.deepEqual(respuesta.body, [
       {
         id: 5, tipo: 'registro_digital', descripcion: 'Camara del estacionamiento a las 21:19.', relevancia: 4, horaIndicio: '2026-11-09 21:19:00',
+        lugarAcreditado: 'Estacionamiento municipal',
         vinculos: [{ sospechosoId: ID_ELISA, nombre: 'Elisa Rivas', tipoVinculo: 'presencia', peso: 2, observaciones: 'La camara sitúa a Elisa fuera del hospital durante su coartada.' }],
       },
       {
         id: 6, tipo: 'registro_digital', descripcion: 'Camara del estacionamiento a las 21:22.', relevancia: 4, horaIndicio: '2026-11-09 21:22:00',
+        lugarAcreditado: 'Estacionamiento municipal',
         vinculos: [{ sospechosoId: ID_DIEGO, nombre: 'Diego Salas', tipoVinculo: 'presencia', peso: 2, observaciones: 'La camara sitúa a Diego fuera del gimnasio durante su coartada.' }],
       },
-      { id: 9, tipo: 'objeto', descripcion: 'Ticket de estacionamiento sin identidad asociada.', relevancia: 2, horaIndicio: null, vinculos: [] },
+      { id: 9, tipo: 'objeto', descripcion: 'Ticket de estacionamiento sin identidad asociada.', relevancia: 2, horaIndicio: null, lugarAcreditado: null, vinculos: [] },
       {
         id: 17, tipo: 'registro_digital', descripcion: 'Camara del estacionamiento que muestra a una mujer todavia dentro de su auto a las 21:30.', relevancia: 4, horaIndicio: '2026-11-09 21:30:00',
+        lugarAcreditado: 'Estacionamiento municipal',
         vinculos: [{ sospechosoId: ID_ELISA, nombre: 'Elisa Rivas', tipoVinculo: 'exculpa', peso: 4, observaciones: 'La mujer del auto es Elisa: seguia en el estacionamiento a la hora del crimen.' }],
       },
     ]);
+  });
+
+  test('GET de evidencias informa el lugar acreditado: el ticket hallado en el archivo acredita Restaurante Central a las 21:12', async () => {
+    const respuesta = await entorno.api.get('/api/escenas/1/evidencias');
+
+    assert.equal(respuesta.status, 200);
+    for (const evidencia of respuesta.body) {
+      assert.deepEqual(
+        Object.keys(evidencia).sort(),
+        ['descripcion', 'horaIndicio', 'id', 'lugarAcreditado', 'relevancia', 'tipo', 'vinculos'],
+      );
+    }
+    const porId = new Map(respuesta.body.map((evidencia) => [evidencia.id, evidencia]));
+    assert.equal(porId.get(18).lugarAcreditado, 'Restaurante Central');
+    assert.equal(porId.get(18).horaIndicio, '2026-11-09 21:12:00');
+    assert.equal(porId.get(2).lugarAcreditado, 'Archivo municipal');
+    assert.equal(porId.get(1).lugarAcreditado, null);
   });
 
   test('cada escena devuelve exactamente las evidencias que SQLite guarda para ella', async () => {
@@ -277,6 +297,26 @@ describe('GET de la API calculados en SQLite', () => {
       sospechosoId: ID_DIEGO, nombre: 'Diego Salas', cantidadIncriminatorias: 1, pesoIncriminatorio: 3, cantidadPresencias: 1, pesoExculpatorio: 0,
     });
     assert.deepEqual(respuesta.body.slice(0, 3), MATRIZ_DEL_CASO.slice(0, 3));
+  });
+
+  test('las coartadas usan el lugar acreditado: el ticket de Carla no las contradice y una prueba sin lugar tampoco', async () => {
+    const sinLugar = insertarEvidencia(entorno.baseDeDatos, { escenaId: 2, horaIndicio: '2026-11-09 21:45:00' });
+    vincularSospechoso(entorno.baseDeDatos, ID_DIEGO, sinLugar, 'presencia', 2);
+    const halladaEnElCafe = insertarEvidencia(entorno.baseDeDatos, {
+      escenaId: 3, horaIndicio: '2026-11-09 21:50:00', lugarAcreditadoId: 2,
+    });
+    vincularSospechoso(entorno.baseDeDatos, ID_DIEGO, halladaEnElCafe, 'presencia', 2);
+
+    const respuesta = await entorno.api.get('/api/casos/1/investigacion/coartadas');
+
+    assert.equal(respuesta.status, 200);
+    const evidencias = respuesta.body.map((fila) => fila.evidenciaId);
+    assert.ok(!evidencias.includes(18));
+    assert.ok(!evidencias.includes(sinLugar));
+    assert.deepEqual(respuesta.body.find((fila) => fila.evidenciaId === halladaEnElCafe), {
+      sospechosoId: ID_DIEGO, nombre: 'Diego Salas', lugarDeclarado: 'Gimnasio Norte',
+      lugarObservado: 'Estacionamiento municipal', horaIndicio: '2026-11-09 21:50:00', evidenciaId: halladaEnElCafe,
+    });
   });
 
   test('sospechosos, escenas, coartadas y matriz se filtran por el caso pedido', async () => {

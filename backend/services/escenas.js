@@ -1,8 +1,9 @@
 'use strict';
 
 /**
- * Evidencias encontradas en una escena, cada una con sus vínculos a
- * sospechosos. Devuelve null cuando la escena no existe.
+ * Evidencias encontradas en una escena, cada una con el lugar que acredita
+ * (null si no acredita ninguno) y sus vínculos a sospechosos. Devuelve null
+ * cuando la escena no existe.
  */
 function listarEvidencias(baseDeDatos, escenaId) {
   const existeEscena = baseDeDatos.prepare('SELECT 1 FROM escena WHERE id = ?').get(escenaId) !== undefined;
@@ -10,10 +11,12 @@ function listarEvidencias(baseDeDatos, escenaId) {
 
   const evidencias = baseDeDatos
     .prepare(
-      `SELECT id, tipo, descripcion, relevancia, hora_indicio AS horaIndicio
-       FROM evidencia
-       WHERE escena_id = ?
-       ORDER BY id`,
+      `SELECT ev.id, ev.tipo, ev.descripcion, ev.relevancia, ev.hora_indicio AS horaIndicio,
+              l.nombre AS lugarAcreditado
+       FROM evidencia ev
+       LEFT JOIN lugar l ON l.id = ev.lugar_acreditado_id
+       WHERE ev.escena_id = ?
+       ORDER BY ev.id`,
     )
     .all(escenaId);
   const vinculos = baseDeDatos

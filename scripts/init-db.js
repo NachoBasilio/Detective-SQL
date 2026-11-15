@@ -39,7 +39,7 @@ function inicializarBase() {
   } catch (error) {
     // Una base a medio crear impediría el próximo db:init: se elimina.
     borrarBase(rutaBase);
-    console.error(`Error: no se pudo ejecutar database/detective.sql: ${error.message}`);
+    console.error(`Error: no se pudo crear la base a partir de database/detective.sql: ${error.message}`);
     process.exitCode = 1;
     return;
   }
