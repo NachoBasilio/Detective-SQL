@@ -1,0 +1,7 @@
+{
+  "name": "detective-sql",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Detective game where clues, interrogations and arrests are resolved through SQL.",
+  "scripts": {}
+}
