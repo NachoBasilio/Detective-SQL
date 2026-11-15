@@ -3,6 +3,8 @@
 const { describe, test, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { crearBase, validarCasosJugables, RUTA_SCRIPT_SQL } = require('../../backend/database/crear-base');
 const { afirmarRechazoSinCambios } = require('../helpers/base-de-datos');
 
@@ -54,5 +56,41 @@ describe('crearBase valida los casos al inicializar', () => {
     });
 
     assert.throws(() => crearBase(':memory:'), ERROR_CASO_SIN_CULPABLE);
+  });
+});
+
+describe('crearBase no deja archivos de una creación rechazada', () => {
+  let carpeta;
+
+  beforeEach(() => {
+    carpeta = fs.mkdtempSync(path.join(os.tmpdir(), 'detective-crear-base-'));
+  });
+  afterEach(() => fs.rmSync(carpeta, { recursive: true, force: true }));
+
+  function simularScriptSinCulpable(t) {
+    const leerArchivo = fs.readFileSync;
+    t.mock.method(fs, 'readFileSync', (ruta, ...opciones) => {
+      const contenido = leerArchivo(ruta, ...opciones);
+      return ruta === RUTA_SCRIPT_SQL
+        ? `${contenido}\nUPDATE sospechoso SET es_culpable = 0 WHERE id = ${ID_CARLA};\n`
+        : contenido;
+    });
+  }
+
+  test('si la validación falla sobre un archivo nuevo, el archivo se borra', (t) => {
+    const ruta = path.join(carpeta, 'nueva.db');
+    simularScriptSinCulpable(t);
+
+    assert.throws(() => crearBase(ruta), ERROR_CASO_SIN_CULPABLE);
+    assert.deepEqual(fs.readdirSync(carpeta), []);
+  });
+
+  test('si el archivo ya existía, no se borra aunque la creación falle', (t) => {
+    const ruta = path.join(carpeta, 'existente.db');
+    fs.writeFileSync(ruta, '');
+    simularScriptSinCulpable(t);
+
+    assert.throws(() => crearBase(ruta), ERROR_CASO_SIN_CULPABLE);
+    assert.equal(fs.existsSync(ruta), true);
   });
 });

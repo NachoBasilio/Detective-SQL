@@ -416,8 +416,8 @@ ORDER BY s.id;
 
 -- C3: Veredicto deducido por pruebas independientes en escena principal.
 -- No consulta la marca de culpabilidad: requiere huella/ADN/objeto y registro
--- digital incriminatorios, peso >= 8, acceso digital próximo al horario del
--- crimen y ninguna prueba exculpatoria que acredite otro lugar con hora a 600
+-- digital incriminatorios, peso >= 8, un registro digital que acredite el
+-- lugar del crimen a 600 segundos o menos del horario del crimen y ninguna prueba exculpatoria que acredite otro lugar con hora a 600
 -- segundos o menos del crimen (una exculpatoria sin lugar o sin hora no
 -- alcanza para descartar). Las diferencias de tiempo se calculan en segundos
 -- enteros con strftime('%s'): diez minutos son exactamente 600 segundos.
@@ -442,6 +442,7 @@ GROUP BY s.id, s.nombre
 HAVING COUNT(DISTINCT ev.tipo) >= 2
    AND SUM(se.peso) >= 8
    AND MAX(CASE WHEN ev.tipo = 'registro_digital'
+     AND ev.lugar_acreditado_id = ec.lugar_id
      AND ev.hora_indicio IS NOT NULL
      AND ABS(CAST(strftime('%s', ev.hora_indicio) AS INTEGER)
            - CAST(strftime('%s', ec.hora_suceso) AS INTEGER)) <= 600

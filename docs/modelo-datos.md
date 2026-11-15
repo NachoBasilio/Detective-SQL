@@ -151,7 +151,7 @@ Las evidencias 1, 3, 4, 9, 10, 11, 13, 14 y 16 no acreditan lugar. El mensaje de
 Efecto en las consultas:
 
 - **C1 (coartadas)** compara `evidencia.lugar_acreditado_id` con `sospechoso.lugar_coartada_id` y exige lugar acreditado y hora dentro de la coartada. Una prueba sin lugar acreditado no genera contradicciones. Con la semilla devuelve las mismas seis contradicciones (evidencias 5, 17, 7, 15, 2 y 6); el ticket de Carla coincide con su coartada y no aparece.
-- **C3 (veredicto)** descarta a un sospechoso solo con un vínculo `exculpa` cuya evidencia acredita un lugar distinto del de la escena principal, tiene hora y está a 600 segundos o menos del crimen. Una exculpatoria con peso pero sin lugar o sin hora no descarta. Bruno queda descartado por la evidencia 15 y Elisa por la 17; el ticket de Carla (21:12) queda a 18 minutos del crimen y no la descarta. C3 devuelve solo a Carla.
+- **C3 (veredicto)** descarta a un sospechoso solo con un vínculo `exculpa` cuya evidencia acredita un lugar distinto del de la escena principal, tiene hora y está a 600 segundos o menos del crimen. Una exculpatoria con peso pero sin lugar o sin hora no descarta. Bruno queda descartado por la evidencia 15 y Elisa por la 17; el ticket de Carla (21:12) queda a 18 minutos del crimen y no la descarta. C3 devuelve solo a Carla. Además, el registro digital incriminatorio que corrobora la presencia tiene que acreditar el lugar de la escena principal (`ev.lugar_acreditado_id = ec.lugar_id`), no solo haberse encontrado en ella: un registro hallado en el archivo que acredita otro lugar, o ninguno, no sirve como corroboración. Esa exigencia no se aplica a las huellas, el ADN ni los objetos, porque algunos son trasladables.
 
 ## Comparación de horarios en C3
 
@@ -171,7 +171,7 @@ Diez minutos son exactamente 600 segundos. Los tests cubren diferencias de ±599
 | Regla | Mecanismo | Nombre |
 |---|---|---|
 | Las claves foráneas se verifican en cada conexión | `PRAGMA` | `foreign_keys = ON` |
-| No se borra un registro referenciado; los cambios de `id` se propagan | FK | `ON DELETE RESTRICT ON UPDATE CASCADE` |
+| No se borra un registro referenciado; los cambios de `id` se propagan salvo que un trigger de inmutabilidad los rechace (ver la nota debajo de la tabla) | FK | `ON DELETE RESTRICT ON UPDATE CASCADE` |
 | A lo sumo un culpable por caso | Índice único parcial | `uq_un_culpable_por_caso` |
 | A lo sumo una escena principal por caso | Índice único parcial | `uq_escena_principal_por_caso` |
 | Nombre de sospechoso único dentro del caso | `UNIQUE` | `uq_sospechoso_nombre` |
@@ -188,6 +188,9 @@ Diez minutos son exactamente 600 segundos. Los tests cubren diferencias de ±599
 | Toda partida comienza en curso | Trigger | `trg_partida_no_insertar_finalizada` |
 | Sospechosos, escenas, evidencias y partidas no cambian de caso | Trigger | `trg_sospechoso_caso_inmutable`, `trg_escena_caso_inmutable`, `trg_evidencia_escena_inmutable`, `trg_partida_caso_inmutable` |
 | La culpabilidad no cambia si el sospechoso ya fue arrestado | Trigger | `trg_culpabilidad_historial` |
+
+
+**Política efectiva de `ON UPDATE CASCADE`.** Las claves foráneas declaran `ON UPDATE CASCADE`, pero algunos triggers de inmutabilidad pueden rechazar esa cascada. Por ejemplo, cambiar el `id` de un caso propagaría el cambio a `sospechoso.caso_id`, y `trg_sospechoso_caso_inmutable` lo rechaza; con partidas terminadas, `trg_partida_finalizada_inmutable` también. La integridad se conserva porque la sentencia completa falla, pero no corresponde afirmar que cualquier clave primaria se puede renumerar y propagar libremente: las restricciones sobre el historial tienen prioridad sobre la cascada declarada.
 
 ## Cierre de la partida y transacciones
 
@@ -217,7 +220,7 @@ La acción del juego es el arresto. El cierre de la partida ya no es una sentenc
 | Una sola acusación por partida, solo en partidas en curso y contra un sospechoso del caso | SQLite: `UNIQUE` de `acusacion.partida_id` y `trg_acusacion_validar_insert`. Como la primera acusación ya cierra la partida, una segunda la rechaza el trigger; el `UNIQUE` queda como segunda barrera. |
 | Una partida finalizada no se reabre ni cambia sus datos históricos | SQLite: `trg_partida_finalizada_inmutable`. |
 | A lo sumo un culpable por caso | SQLite: índice único parcial `uq_un_culpable_por_caso`. |
-| Exactamente un culpable en cada caso con sospechosos | Inicialización: `validarCasosJugables` en [`backend/database/crear-base.js`](../backend/database/crear-base.js) falla con un error en español si algún caso no lo cumple, y `npm run db:init` borra la base a medio crear. Los tests lo comprueban. Después de inicializar, un `UPDATE` administrativo podría dejar un caso sin culpable: el índice no lo impide. |
+| Exactamente un culpable en cada caso con sospechosos | Inicialización: `validarCasosJugables` en [`backend/database/crear-base.js`](../backend/database/crear-base.js) falla con un error en español si algún caso no lo cumple; `crearBase` borra el archivo si lo creó esa misma llamada (nunca una base que ya existía) y `npm run db:init` también lo limpia. Los tests lo comprueban. Después de inicializar, un `UPDATE` administrativo podría dejar un caso sin culpable: el índice no lo impide. |
 | El culpable no sale del backend antes del arresto | Aplicación: ninguna consulta previa al arresto lee `es_culpable`. |
 | El veredicto de C3 coincide con `es_culpable` | Datos semilla y tests. SQLite no mantiene sincronizadas C3 y `es_culpable`: editar evidencias, vínculos o lugares acreditados puede hacer que C3 deduzca otra persona (o nadie) sin que la base lo impida. |
 

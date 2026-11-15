@@ -117,7 +117,7 @@ describe('Diez consultas de database/detective.sql', () => {
 
     /** Registro digital incriminatorio en la escena principal, cerca de la hora del crimen. */
     function agregarRegistroIncriminatorio(sospechosoId, horaIndicio = '2026-11-09 21:28:00') {
-      const evidenciaId = insertarEvidencia(conexion, { escenaId: ESCENA_ARCHIVO, horaIndicio });
+      const evidenciaId = insertarEvidencia(conexion, { escenaId: ESCENA_ARCHIVO, horaIndicio, lugarAcreditadoId: LUGAR_ARCHIVO });
       vincularSospechoso(conexion, sospechosoId, evidenciaId, 'incrimina', 5);
     }
 
@@ -203,7 +203,7 @@ describe('Diez consultas de database/detective.sql', () => {
 
     function agregarRegistroDeBruno(horaIndicio) {
       quitarExculpatoriaDeBruno();
-      const evidenciaId = insertarEvidencia(conexion, { escenaId: ESCENA_ARCHIVO, horaIndicio });
+      const evidenciaId = insertarEvidencia(conexion, { escenaId: ESCENA_ARCHIVO, horaIndicio, lugarAcreditadoId: LUGAR_ARCHIVO });
       vincularSospechoso(conexion, ID_BRUNO, evidenciaId, 'incrimina', 5);
     }
 
@@ -407,5 +407,39 @@ describe('Vista vista_matriz_evidencias', () => {
       )
       .all();
     assert.deepEqual(vista, conexion.prepare(consultas.get(2).sql).all());
+  });
+});
+
+describe('C3: el registro digital que corrobora la presencia acredita el lugar del crimen', () => {
+  const LUGAR_RESTAURANTE = 6;
+  let conexion;
+
+  beforeEach(() => {
+    conexion = crearBase(':memory:');
+  });
+  afterEach(() => conexion.close());
+
+  function veredicto() {
+    return conexion.prepare(consultas.get(3).sql).all().map((fila) => fila.id);
+  }
+
+  function cambiarLugarDelAccesoDeCarla(lugarId) {
+    conexion.prepare('UPDATE evidencia SET lugar_acreditado_id = ? WHERE id = 2').run(lugarId);
+  }
+
+  test('el acceso con credencial de Carla acredita el archivo, lugar del crimen', () => {
+    assert.equal(conexion.prepare('SELECT lugar_acreditado_id FROM evidencia WHERE id = 2').pluck().get(), LUGAR_ARCHIVO);
+    assert.deepEqual(veredicto(), [ID_CARLA]);
+  });
+
+  test('si el registro digital acredita otro lugar, no corrobora la presencia y C3 no devuelve a nadie', () => {
+    assert.equal(conexion.prepare('SELECT nombre FROM lugar WHERE id = ?').pluck().get(LUGAR_RESTAURANTE), 'Restaurante Central');
+    cambiarLugarDelAccesoDeCarla(LUGAR_RESTAURANTE);
+    assert.deepEqual(veredicto(), []);
+  });
+
+  test('si el registro digital no acredita ningún lugar, tampoco corrobora la presencia', () => {
+    cambiarLugarDelAccesoDeCarla(null);
+    assert.deepEqual(veredicto(), []);
   });
 });

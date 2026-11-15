@@ -39,12 +39,15 @@ function validarCasosJugables(baseDeDatos) {
 
 /**
  * Abre una conexión SQLite, activa las claves foráneas, ejecuta el script
- * completo de Detective SQL y valida que los casos sean jugables.
+ * completo de Detective SQL y valida que los casos sean jugables. Si algo
+ * falla sobre un archivo que no existía, lo borra para no dejar una base a medias.
  *
  * @param {string} rutaBase Ruta del archivo de la base o ':memory:'.
  * @returns {import('better-sqlite3').Database} Conexión lista para jugar.
  */
 function crearBase(rutaBase) {
+  const esArchivo = rutaBase !== ':memory:' && rutaBase !== '';
+  const existiaAntes = esArchivo && fs.existsSync(rutaBase);
   const conexion = new Database(rutaBase);
   try {
     conexion.pragma('foreign_keys = ON');
@@ -52,9 +55,19 @@ function crearBase(rutaBase) {
     validarCasosJugables(conexion);
   } catch (error) {
     conexion.close();
+    // Solo se borra un archivo que esta llamada creó: una base que ya existía
+    // nunca se elimina, aunque la creación falle.
+    if (esArchivo && !existiaAntes) borrarArchivosDeLaBase(rutaBase);
     throw error;
   }
   return conexion;
+}
+
+/** Borra el archivo de la base y sus archivos auxiliares de SQLite. */
+function borrarArchivosDeLaBase(rutaBase) {
+  for (const sufijo of ['', '-journal', '-wal', '-shm']) {
+    fs.rmSync(`${rutaBase}${sufijo}`, { force: true });
+  }
 }
 
 module.exports = { crearBase, validarCasosJugables, RUTA_SCRIPT_SQL };

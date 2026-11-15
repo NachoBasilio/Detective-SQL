@@ -57,3 +57,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** corregir los hallazgos de una auditoría del modelo: precisión temporal del veredicto (H1), separar el lugar donde se encontró una prueba del lugar que acredita (H2), cerrar la partida desde SQLite al registrar la acusación (H3) y revisar garantías adicionales (H4), todo en el PR #6.
 - **Respuesta:** C3 compara horarios en segundos enteros con `strftime('%s')` (diez minutos son 600 segundos exactos; `julianday()` excluía el límite). Nueva columna `evidencia.lugar_acreditado_id` (clave foránea a `lugar`); C1 y C3 usan el lugar acreditado y el ticket de Carla guarda su hora real (21:12). Trigger `trg_acusacion_cerrar_partida`: insertar la acusación cierra la partida como ganada o perdida según `es_culpable`, y el backend solo lee el estado guardado. Trigger `trg_partida_finalizada_inmutable` y validación de exactamente un culpable por caso al inicializar. Se agregó el campo `lugarAcreditado` a las evidencias de la API y una columna en la tabla de evidencias. Antes de implementar, 48 de 142 tests fallaban por los defectos reportados; después, 142 de 142.
 - **Decisión:** aceptado para revisión. Se documentó que SQLite no mantiene sincronizados C3 y `es_culpable` si se editan las evidencias a mano, y que el índice único garantiza como máximo un culpable mientras la inicialización garantiza exactamente uno. Pendiente de revisión del equipo en el PR.
+
+### 2026-11-15 — Observaciones del juicio independiente (PR #6)
+
+- **Integrante:** Ignacio Nicolas Basilio Buracco.
+- **Fase:** SQL.
+- **Pedido:** aplicar en el PR #6 las tres observaciones no bloqueantes del juicio independiente del commit de auditoría.
+- **Respuesta:** I1: en C3, el registro digital incriminatorio que corrobora la presencia ahora tiene que acreditar el lugar de la escena principal, no solo haberse encontrado en ella. I2: `crearBase` borra el archivo de una creación rechazada solo si lo creó esa misma llamada; nunca borra una base existente. I3: se documentó la política efectiva de `ON UPDATE CASCADE`, que los triggers de inmutabilidad pueden rechazar. Antes de implementar, 3 tests nuevos fallaban; después, 147 de 147.
+- **Decisión:** aceptado para revisión. Con los datos semilla, C3 sigue devolviendo solo a Carla. Pendiente de revisión del equipo en el PR.
