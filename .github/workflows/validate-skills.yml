@@ -1,0 +1,15 @@
+name: Validar skills
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Ejecutar el validador de skills
+        run: bash scripts/validate-skills.sh

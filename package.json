@@ -2,6 +2,8 @@
   "name": "detective-sql",
   "version": "0.1.0",
   "private": true,
-  "description": "Detective game where clues, interrogations and arrests are resolved through SQL.",
-  "scripts": {}
+  "description": "Juego de detectives en el que pistas, interrogatorios y arrestos se resuelven con SQL.",
+  "scripts": {
+    "validate:skills": "bash scripts/validate-skills.sh"
+  }
 }
