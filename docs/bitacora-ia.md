@@ -25,3 +25,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** crear una skill de UI/UX basada en UI UX Pro Max (https://uupm.cc/), con la misma estructura que las skills del proyecto.
 - **Respuesta:** skill `Skills/ui-ux/SKILL.md` con las prioridades y el checklist de UI UX Pro Max adaptados a HTML, CSS y JavaScript sin frameworks, más reglas propias del juego (culpable oculto en la UI, errores de la API sin duplicar validaciones). No se instaló el buscador ni la base de datos de UI UX Pro Max. Fila nueva en la tabla de `AGENTS.md`.
 - **Decisión:** pendiente de revisión del equipo en el PR.
+
+### 2026-11-15 — Skill de UI/UX: enfoque de Impeccable
+
+- **Integrante:** Ignacio Nicolas Basilio Buracco.
+- **Fase:** Organización.
+- **Pedido:** que la skill de UI/UX también se parezca a lo que propone Impeccable (https://impeccable.style/).
+- **Respuesta:** se sumaron a `Skills/ui-ux/SKILL.md` el contexto de diseño antes de construir (`docs/design.md`), el modo de cada pantalla del juego, el vocabulario de pedidos (`critique`, `audit`, `polish`, etc.), el piso de calidad y los anti-patrones de interfaces genéricas. No se instaló el CLI ni el detector de Impeccable.
+- **Decisión:** pendiente de revisión del equipo en el PR.
