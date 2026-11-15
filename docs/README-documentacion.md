@@ -23,9 +23,9 @@ Todo lo marcado como **Para completar por el equipo** en este documento. Nada de
 - [ ] Reglas del juego escritas con palabras propias, si el equipo lo desea ([sección 1](#1-descripción-y-reglas-del-juego)).
 - [ ] Capturas de pantalla de la aplicación ([sección 2](#2-flujo-completo-de-una-partida)).
 - [ ] Capturas del MER y del modelo relacional dibujados en Miro ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo)).
-- [ ] Revisión final del MER generado con ayuda de IA ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo) y [sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
+- [ ] Revisión final del diagrama del MER, que la IA dibujó a partir del modelo del equipo ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo) y [sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
 - [ ] Prueba de instalación en Windows y con la versión de Node.js de cada integrante: la suite ya pasó en Windows con Node.js 22.14.0; falta jugar una partida completa con `npm start` ([sección 13](#13-matriz-de-pruebas-y-resultados-verificables)).
-- [ ] Revisión de las decisiones que la bitácora marca como pendientes ([sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
+- [x] Revisión de las decisiones de la bitácora: cada entrada registra lo que se mergeó ([sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
 
 ## Equipo
 
@@ -796,9 +796,9 @@ Detalle de las dos últimas filas: entradas "Correcciones de la auditoría final
 
 > [!IMPORTANT]
 > **Para completar por el equipo:**
-> - Hacer la revisión final del MER generado con ayuda de IA y dejar registrado en la bitácora qué se mantuvo y qué se corrigió.
-> - Revisar las entradas de la bitácora marcadas como "pendiente de revisión del equipo" y registrar la decisión final.
-> - Registrar los pedidos importantes que falten, incluido el de esta documentación, con pedido, respuesta y decisión.
+> - Hacer la revisión final del diagrama del MER, que la IA dibujó a partir del modelo del equipo, y dejar registrado en la bitácora qué se mantuvo y qué se corrigió al pasarlo a Miro.
+> - Mantener la bitácora al día: cada entrada nueva registra el pedido, la respuesta y la decisión final del equipo.
+> - Registrar los pedidos importantes que falten, con pedido, respuesta y decisión.
 
 ---
 
