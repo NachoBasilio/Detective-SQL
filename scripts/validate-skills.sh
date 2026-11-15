@@ -63,6 +63,8 @@ extract_skill_type() {
   value="$(printf '%s\n' "$frontmatter" | awk '
     /^[[:space:]]*skill_type:[[:space:]]*/ {
       sub(/^[^:]+:[[:space:]]*/, "", $0)
+      # Ignorar comentarios YAML al final de la linea (el template los usa).
+      sub(/[[:space:]]+#.*$/, "", $0)
       gsub(/"/, "", $0)
       print
       exit
