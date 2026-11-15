@@ -29,6 +29,21 @@ Fuente de los tokens del frontend. Se implementan como propiedades personalizada
 
 En fondos de color el texto se tiñe del tono del fondo; nunca gris sobre color. El tipo de vínculo de una evidencia (incrimina, exculpa, presencia) se escribe siempre como texto: el color solo lo refuerza.
 
+## Tokens reutilizables
+
+Los valores compartidos viven en `:root` de `frontend/css/estilos.css`. Antes de crear una medida o color nuevo, se reutiliza el token que representa la misma decisión visual. Los valores técnicos aislados, como el recorte de contenido solo para lectores de pantalla, no se convierten en tokens.
+
+| Grupo | Tokens | Uso |
+|---|---|---|
+| Color | `--color-*` | Superficies, texto, estados, foco y selección. Los hexadecimales se declaran solo aquí. |
+| Tipografía | `--fuente-*`, `--texto-*`, `--interlineado` | Lectura, datos y jerarquía de títulos. |
+| Espaciado | `--espacio-1` a `--espacio-7` | Separación y relleno de componentes. |
+| Forma y controles | `--radio`, `--borde-ancho`, `--borde-ancho-activo`, `--control-altura-minima` | Bordes, foco visual y áreas táctiles de navegación, botones, pestañas, selectores y opciones. |
+| Anchos | `--ancho-hoja`, `--ancho-lectura`, `--ancho-tabla-estandar`, `--ancho-tabla-evidencias`, `--ancho-confirmacion` | Lectura, tablas desplazables y confirmación de la acusación. |
+| Movimiento | `--duracion`, `--duracion-sello`, `--curva-salida` | Transiciones cortas y la animación única del veredicto. |
+
+Los puntos de corte se mantienen literales en las reglas `@media`, porque las propiedades personalizadas no se pueden usar de forma interoperable en las condiciones de media queries.
+
 ## Tipografía
 
 Dos familias, ambas del sistema (sin CDN, el juego funciona sin conexión):
@@ -52,6 +67,32 @@ Escala de 4 px: `--espacio-1` 0.25 rem, `-2` 0.5, `-3` 0.75, `-4` 1, `-5` 1.5, `
 | Resultado | Experiencia | Veredicto con el sello grande animado y la ficha del resultado. |
 
 La navegación es una lista ordenada porque sigue el flujo del juego; no se muestran números de paso. Las pantallas que necesitan una partida aparecen deshabilitadas hasta iniciarla.
+
+## Componentes reutilizables
+
+### Botones
+
+`.boton` establece tamaño táctil, espaciado y transición. Sus variantes son `.boton--primario`, `.boton--secundario` y `.boton--peligro`; comparten estados `hover`, `active`, `disabled` y `aria-busy`.
+
+### Avisos
+
+`.aviso`, `.alerta`, `.estado` y `.error-campo` comunican información, carga o error. El texto explica qué pasó y cómo seguir; el color nunca es la única señal.
+
+### Fichas
+
+`.ficha` presenta pares de etiqueta y valor en el expediente y el resultado. `.dato` se usa solo para números, fechas, horas e identificadores.
+
+### Pestañas
+
+`.pestanas` y `[role="tab"]` siguen el patrón ARIA de pestañas. El estado seleccionado se expresa con `aria-selected`, no solo con color.
+
+### Tablas
+
+`.tabla-contenedor` administra el desplazamiento horizontal y `.tabla` define la tabla base. `.tabla--evidencias` usa un ancho mínimo mayor para preservar la lectura de todas sus columnas.
+
+### Sellos
+
+`.sello` representa el estado de la partida y `.sello--grande` se reserva para el veredicto. Es la única animación protagonista y respeta `prefers-reduced-motion`.
 
 ## Excepciones justificadas
 

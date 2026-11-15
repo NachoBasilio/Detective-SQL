@@ -73,3 +73,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** un integrante del equipo observó en el PR #6 que, al recargar la página después de un arresto, se perdía la pantalla de resultado, y propuso guardar la respuesta del arresto en `sessionStorage`.
 - **Respuesta:** el frontend guarda la respuesta del arresto en la sesión del navegador y, al recargar, restaura el resultado solo si corresponde a la partida guardada y su estado coincide con el que devuelve la API. Un resultado guardado que no coincide se descarta, e iniciar una partida nueva borra el anterior. `GET /api/partidas/:id` sigue sin devolver acusado ni culpable.
 - **Decisión:** aceptada la propuesta del equipo. Se descartó agregar un endpoint de resultado porque permitiría leer el culpable desde la partida de demostración sin jugar. Verificado en el navegador: perder y ganar, recargar, resultado alterado y partida nueva.
+
+### 2026-11-15 — Consolidación del design system (Issue #9)
+
+- **Integrante:** Laureano Iglesias.
+- **Fase:** Aplicación.
+- **Pedido:** ordenar el sistema visual de la plataforma para reutilizar colores, medidas y componentes sin rediseñar la interfaz.
+- **Respuesta:** se documentaron los grupos de tokens y el catálogo de componentes en `docs/design.md`; se reemplazaron medidas repetidas de controles, bordes, tablas, confirmación y sellos por tokens en `frontend/css/estilos.css`; se agregaron pruebas que impiden volver a dejar esos valores compartidos sin su token.
+- **Decisión:** aceptado para revisión. Se conserva la identidad visual actual y se verificó en navegador que no haya desborde horizontal a 320, 768 y 1280 px.
