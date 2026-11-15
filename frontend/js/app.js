@@ -56,6 +56,51 @@ function olvidarPartida() {
   } catch {
     // Sin almacenamiento: no hay nada que borrar.
   }
+  olvidarArresto();
+}
+
+/* Resultado guardado: la respuesta del arresto (la única que trae al culpable)
+   se guarda en la sesión para volver a mostrar el resultado después de una
+   recarga. GET /api/partidas/:id no devuelve acusado ni culpable a propósito,
+   así que sin esta copia la pantalla de resultado no se puede reconstruir. */
+
+const CLAVE_ARRESTO = 'detective-sql:arresto';
+const ESTADOS_FINALES = ['ganada', 'perdida'];
+const RESULTADOS = ['correcto', 'incorrecto'];
+
+function guardarArresto(arresto) {
+  try {
+    sessionStorage.setItem(CLAVE_ARRESTO, JSON.stringify(arresto));
+  } catch {
+    // Sin almacenamiento: el resultado se ve hasta que se recargue la página.
+  }
+}
+
+/**
+ * Devuelve el arresto guardado solo si corresponde a la partida indicada y
+ * tiene la forma que devuelve la API; en cualquier otro caso, null.
+ */
+function leerArrestoGuardado(partidaId) {
+  try {
+    const arresto = JSON.parse(sessionStorage.getItem(CLAVE_ARRESTO) ?? 'null');
+    const valido =
+      arresto?.partida?.id === partidaId &&
+      ESTADOS_FINALES.includes(arresto.partida.estado) &&
+      RESULTADOS.includes(arresto.resultado) &&
+      typeof arresto.acusacion?.nombre === 'string' &&
+      (arresto.culpable === null || typeof arresto.culpable?.nombre === 'string');
+    return valido ? arresto : null;
+  } catch {
+    return null;
+  }
+}
+
+function olvidarArresto() {
+  try {
+    sessionStorage.removeItem(CLAVE_ARRESTO);
+  } catch {
+    // Sin almacenamiento: no hay nada que borrar.
+  }
 }
 
 /* Cabecera, avisos y navegación */
@@ -130,6 +175,7 @@ const contexto = {
     const partida = await api.crearPartida(casoId);
     juego.partida = partida;
     juego.arresto = null;
+    olvidarArresto();
     guardarPartida(partida.id);
     actualizarCabecera();
     ir('investigacion');
@@ -139,12 +185,17 @@ const contexto = {
   registrarArresto(arresto) {
     juego.arresto = arresto;
     juego.partida = { ...juego.partida, ...arresto.partida };
+    guardarArresto(arresto);
     actualizarCabecera();
     ir('resultado');
   },
 };
 
-/** Recupera la partida guardada; la API dice si sigue en curso. */
+/**
+ * Recupera la partida guardada; la API dice si sigue en curso. Si ya terminó,
+ * el resultado se restaura desde la sesión solo cuando el estado guardado
+ * coincide con el que tiene SQLite para esa partida.
+ */
 async function recuperarPartida() {
   const partidaId = leerPartidaGuardada();
   if (partidaId === null) return;
@@ -152,6 +203,12 @@ async function recuperarPartida() {
     const partida = await api.obtenerPartida(partidaId);
     if (partida.estado === 'en_curso') {
       juego.partida = partida;
+      return;
+    }
+    const arresto = leerArrestoGuardado(partida.id);
+    if (arresto !== null && arresto.partida.estado === partida.estado) {
+      juego.partida = { ...partida, ...arresto.partida };
+      juego.arresto = arresto;
       return;
     }
     olvidarPartida();
