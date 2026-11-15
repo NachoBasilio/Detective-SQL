@@ -49,7 +49,7 @@
   --borde-ancho-activo: 3px;
   --borde-ancho-sello: 3px;
   --borde-ancho-sello-grande: 7px;
-  --control-altura-minima: 2.75rem;
+  --control-altura-minima: max(44px, 2.75rem);
   --sombra-hoja: 0 1px 2px rgb(28 26 23 / 0.08), 0 12px 28px -16px rgb(28 26 23 / 0.35);
   --ancho-hoja: 68rem;
   --ancho-lectura: 70ch;
@@ -92,7 +92,7 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-foco);
+  outline: var(--borde-ancho-activo) solid var(--color-foco);
   outline-offset: 2px;
 }
 
@@ -172,7 +172,7 @@ a:hover {
 
 .cabecera {
   background: var(--color-hoja);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
 }
 
 .cabecera__interior,
@@ -306,7 +306,7 @@ a:hover {
 .aviso {
   margin-bottom: var(--espacio-5);
   padding: var(--espacio-3) var(--espacio-4);
-  border: 1px solid currentColor;
+  border: var(--borde-ancho) solid currentColor;
   border-radius: var(--radio);
   background: var(--color-aviso-fondo);
   color: var(--color-aviso-texto);
@@ -328,7 +328,7 @@ a:hover {
   gap: var(--espacio-3);
   max-width: var(--ancho-lectura);
   padding: var(--espacio-4);
-  border: 1px solid currentColor;
+  border: var(--borde-ancho) solid currentColor;
   border-radius: var(--radio);
   background: var(--color-error-fondo);
   color: var(--color-error-texto);
@@ -427,7 +427,7 @@ a:hover {
   align-content: start;
   gap: var(--espacio-1);
   padding-bottom: var(--espacio-2);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
 }
 
 .ficha dt {
@@ -442,14 +442,14 @@ a:hover {
 .lista-sospechosos {
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--color-borde);
+  border-top: var(--borde-ancho) solid var(--color-borde);
 }
 
 .lista-sospechosos > li {
   display: grid;
   gap: var(--espacio-3);
   padding-block: var(--espacio-4);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
 }
 
 .lista-sospechosos .ficha {
@@ -497,7 +497,7 @@ a:hover {
 .bloque + .bloque {
   margin-top: var(--espacio-6);
   padding-top: var(--espacio-5);
-  border-top: 1px solid var(--color-borde);
+  border-top: var(--borde-ancho) solid var(--color-borde);
 }
 
 .bloque > * + * {
@@ -527,7 +527,7 @@ a:hover {
 .tabla th,
 .tabla td {
   padding: var(--espacio-2) var(--espacio-3);
-  border-bottom: 1px solid var(--color-borde);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
   text-align: left;
   vertical-align: top;
 }

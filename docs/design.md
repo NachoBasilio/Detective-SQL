@@ -6,7 +6,7 @@ Fuente de los tokens del frontend. Se implementan como propiedades personalizada
 
 - **Tema: expediente criminal impreso.** La consigna pide "estética de terminal policial o expediente criminal". El tema aporta solo tipografía, paleta, densidad y una firma visual; la navegación, los botones, las pestañas, las tablas y los formularios son controles estándar.
 - **Modo claro.** El juego se usa en notebooks y se presenta proyectado en el aula. Tinta oscura sobre papel claro se lee mejor en un proyector y en lecturas largas (expediente, declaraciones) que el fondo oscuro de una terminal.
-- **Firma visual: el sello.** El estado de la partida (`en_curso`, `ganada`, `perdida`, tal como lo devuelve la API) se muestra como un sello de goma: borde doble, mayúsculas espaciadas y una leve rotación. Es chico en la cabecera y grande en el veredicto, donde ocurre la única animación protagonista (`sellar`: 360 ms, *ease-out*, solo `transform` y `opacity`, desactivada con `prefers-reduced-motion`).
+- **Firma visual: el sello.** El estado de la partida (`en_curso`, `ganada`, `perdida`, tal como lo devuelve la API) se muestra como un sello de goma: borde doble, mayúsculas espaciadas y una leve rotación. Es chico en la cabecera y grande en el veredicto, donde ocurre la única animación protagonista (`sellar`: `--duracion-sello`, *ease-out*, solo `transform` y `opacity`, desactivada con `prefers-reduced-motion`).
 
 ## Color
 
@@ -38,7 +38,7 @@ Los valores compartidos viven en `:root` de `frontend/css/estilos.css`. Antes de
 | Color | `--color-*` | Superficies, texto, estados, foco y selección. Los hexadecimales se declaran solo aquí. |
 | Tipografía | `--fuente-*`, `--texto-*`, `--interlineado` | Lectura, datos y jerarquía de títulos. |
 | Espaciado | `--espacio-1` a `--espacio-7` | Separación y relleno de componentes. |
-| Forma y controles | `--radio`, `--borde-ancho`, `--borde-ancho-activo`, `--control-altura-minima` | Bordes, foco visual y áreas táctiles de navegación, botones, pestañas, selectores y opciones. |
+| Forma y controles | `--radio`, `--borde-ancho`, `--borde-ancho-activo`, `--borde-ancho-sello`, `--borde-ancho-sello-grande`, `--control-altura-minima` | Bordes, foco visual y áreas táctiles de navegación, botones, pestañas, selectores, opciones y sellos. |
 | Anchos | `--ancho-hoja`, `--ancho-lectura`, `--ancho-tabla-estandar`, `--ancho-tabla-evidencias`, `--ancho-confirmacion` | Lectura, tablas desplazables y confirmación de la acusación. |
 | Movimiento | `--duracion`, `--duracion-sello`, `--curva-salida` | Transiciones cortas y la animación única del veredicto. |
 
@@ -55,7 +55,7 @@ Escala: 0.875 / 1.0625 (base, 17 px) / 1.3125 / 1.75 rem y títulos con `clamp(1
 
 ## Espaciado y forma
 
-Escala de 4 px: `--espacio-1` 0.25 rem, `-2` 0.5, `-3` 0.75, `-4` 1, `-5` 1.5, `-6` 2, `-7` 3 rem. Más espacio arriba de un título (`-7`) que debajo (`-3`). Radio único de 4 px. Una sola sombra suave (`--sombra-hoja`) para la hoja; adentro, las secciones se separan con reglas de 1 px, sin tarjetas anidadas. Áreas táctiles de 44 px como mínimo con 8 px o más de separación.
+Escala de 4 px: `--espacio-1` 0.25 rem, `-2` 0.5, `-3` 0.75, `-4` 1, `-5` 1.5, `-6` 2, `-7` 3 rem. Más espacio arriba de un título (`-7`) que debajo (`-3`). Radio único de 4 px. Una sola sombra suave (`--sombra-hoja`) para la hoja; adentro, las secciones se separan con reglas `--borde-ancho`, sin tarjetas anidadas. Los controles usan `--control-altura-minima`, con un piso efectivo de 44 px y 8 px o más de separación.
 
 ## Pantallas
 
