@@ -52,6 +52,7 @@ Esta skill es de tipo `encoded_preference`: la consigna exige documentar el uso 
 - Cada decisión que tome o proponga la IA se explica, para que cualquier integrante pueda defenderla.
 - Registrar los pedidos importantes, no cada mensaje.
 - Ser fiel: si se rechazó o corrigió lo que propuso la IA, dejarlo escrito.
+- No registrar qué herramienta ni qué modelo de IA se usó.
 - **PR en español:** título y descripción de todo pull request se escriben en español (ver `Skills/git-workflow/SKILL.md`).
 
 ## Formato de cada entrada
@@ -62,7 +63,6 @@ Agregar al final de `docs/bitacora-ia.md`:
 ### AAAA-MM-DD — Título breve
 
 - **Integrante:** quién hizo el pedido.
-- **Herramienta:** agente y modelo.
 - **Fase:** MER | Modelo relacional | SQL | Aplicación | Organización.
 - **Pedido:** qué se pidió.
 - **Respuesta:** qué propuso o generó la IA.
