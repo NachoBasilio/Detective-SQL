@@ -33,3 +33,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** que la skill de UI/UX también se parezca a lo que propone Impeccable (https://impeccable.style/).
 - **Respuesta:** se sumaron a `Skills/ui-ux/SKILL.md` el contexto de diseño antes de construir (`docs/design.md`), el modo de cada pantalla del juego, el vocabulario de pedidos (`critique`, `audit`, `polish`, etc.), el piso de calidad y los anti-patrones de interfaces genéricas. No se instaló el CLI ni el detector de Impeccable.
 - **Decisión:** pendiente de revisión del equipo en el PR.
+
+### 2026-11-15 — Revisión del modelo relacional
+
+- **Integrante:** Ignacio Nicolas Basilio Buracco.
+- **Fase:** MER y modelo relacional.
+- **Pedido:** analizar el alcance de la consigna, detectar contradicciones y revisar las ocho tablas propuestas por el equipo antes de escribir el script SQL.
+- **Respuesta:** `docs/revision-modelo.md` con nueve hallazgos sobre la consigna, revisión tabla por tabla, cardinalidades, políticas `ON DELETE` / `ON UPDATE`, justificación de 3FN y ubicación de cada regla en la base. Propone una tabla `lugar`, nuevas columnas en `sospechoso`, `escena` y `caso`, y seis decisiones para que el equipo confirme.
+- **Decisión:** pendiente de revisión del equipo en el PR.
