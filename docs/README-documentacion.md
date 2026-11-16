@@ -28,23 +28,25 @@ Todo lo marcado como **Para completar por el equipo** en este documento. Nada de
 
 ## Equipo
 
-Integrantes y DNI: ver [Participantes en el README](../README.md#participantes).
+Nombre del equipo: **Los Alkymeters**. Integrantes y DNI: ver [Participantes en el README](../README.md#participantes).
 
 | Integrante | Rol | Qué aporta |
 |---|---|---|
-| Ignacio Nicolas Basilio Buracco | Scrum Master | Planteo de la base de datos, idea del proyecto web y desarrollo. |
-| Lucas Gabriel Ruiz | Product Owner | Planteo de la base de datos, idea del proyecto web y desarrollo. |
-| Laureano Damián Iglesias | Desarrollador | Planteo de la base de datos, idea del proyecto web y desarrollo. |
+| Ignacio Nicolas Basilio Buracco | Scrum Master | Skills de IA. |
+| Lucas Gabriel Ruiz | Product Owner | Mejoras en el front. |
+| Laureano Damián Iglesias | Desarrollador | Mejoras en la tokenización de los componentes web. |
 
-Scrum pide dos roles, Product Owner y Scrum Master; el resto del equipo son desarrolladores. Los tres integrantes plantearon juntos la base de datos y la idea de hacer un proyecto web, y los tres desarrollaron.
+Scrum pide dos roles, Product Owner y Scrum Master; el resto del equipo son desarrolladores. Los tres integrantes plantearon juntos la base de datos y la idea de hacer un proyecto web, y los tres desarrollaron; la tabla muestra lo que aportó cada uno además de ese trabajo común.
 
-Recursos: Node.js, SQLite (incluida en better-sqlite3), Express, `node:test` y Supertest; Git y GitHub con Gitflow (`main` es la rama principal, `dev` integra los cambios y cada cambio sale de `dev` en su propia rama); Mermaid para el MER; y asistentes de IA, registrados en la [bitácora](bitacora-ia.md).
+Recursos: Node.js, SQLite (incluida en better-sqlite3), Express, `node:test` y Supertest; Git y GitHub con Gitflow (`main` es la rama principal, `dev` integra los cambios y cada cambio sale de `dev` en su propia rama); Miro para los diagramas del equipo ([tablero](https://miro.com/app/board/uXjVENHpp00=/?share_link_id=636617532777)) y Mermaid para versionarlos como texto; y asistentes de IA, registrados en la [bitácora](bitacora-ia.md).
 
 ---
 
 ## 1. Descripción y reglas del juego
 
 ### Descripción
+
+Elegimos Detective SQL porque durante la semana nuestro CTO propuso jugar a algo por el estilo en un ice breaker.
 
 Detective SQL es un juego de investigación. El jugador recibe un expediente, revisa escenas, evidencias, interrogatorios y coartadas, y tiene **un solo intento** para arrestar al culpable. Todo lo que ve sale de consultas SQL sobre una base SQLite, y la base decide si el arresto fue correcto.
 
@@ -183,7 +185,7 @@ Que una partida terminada tenga exactamente una acusación lo garantizan juntos 
 
 ## 4. Propuesta de MER y modelo relacional para revisión del equipo
 
-El MER completo, con atributos, PK, FK y cardinalidades en notación pata de gallo, está en [`docs/modelo-datos.md`](modelo-datos.md#mer) como diagrama Mermaid.
+El MER completo, con atributos, PK, FK y cardinalidades en notación pata de gallo, está en [`docs/modelo-datos.md`](modelo-datos.md#mer) como diagrama Mermaid. El equipo también armó sus diagramas en un [tablero de Miro](https://miro.com/app/board/uXjVENHpp00=/?share_link_id=636617532777): las tres versiones del MER, la transacción de la orden de arresto y la arquitectura de la aplicación.
 
 Resumen: 9 tablas (8 entidades y 1 entidad asociativa) y 11 relaciones, detalladas en la [sección 3](#3-entidades-relaciones-y-cardinalidades). En el diagrama, la relación N:M entre sospechoso y evidencia se dibuja como dos líneas hacia `sospechoso_evidencia`, por eso aparecen 12 líneas.
 
@@ -667,15 +669,15 @@ Principios:
 
 | Tecnología | Versión | Por qué |
 |---|---|---|
-| SQLite | incluida en `better-sqlite3` | La consigna pide una base local sin hosting externo. Es un archivo: no requiere instalar ni configurar un servidor. |
+| SQLite | incluida en `better-sqlite3` | Base local sin hosting externo: es un archivo y no requiere instalar ni configurar un servidor, así que el juego corre igual en la computadora de cada integrante. |
 | `better-sqlite3` | 13.2.0 | Conexión directa a SQLite desde Node.js, sin ORM. Tiene sentencias preparadas con `?` (consultas parametrizadas) y `transaction()`, que hace `COMMIT` o `ROLLBACK` automáticamente. Trae binarios precompilados para Windows, macOS y Linux. |
 | Node.js | 22 o posterior | Entorno de ejecución del backend. Incluye el runner de tests `node:test`. |
-| Express | 5.3.0 | La consigna pide Node.js con Express. Resuelve rutas, JSON y archivos estáticos con poco código. |
-| HTML, CSS y JavaScript sin frameworks | — | La consigna pide frontend en HTML5, CSS3 y JavaScript vanilla, sin React ni Next.js. |
+| Express | 5.3.0 | Elección del equipo para el backend en Node.js: resuelve rutas, JSON y archivos estáticos con poco código, y un solo servidor local sirve la API y el frontend. |
+| HTML, CSS y JavaScript sin frameworks | — | Elección del equipo: el juego tiene cuatro pantallas y no necesita un framework. El navegador carga los módulos directamente, sin paso de compilación, y el proyecto no suma dependencias. |
 | `node:test` | incluido en Node.js | Tests sin dependencias adicionales. |
 | Supertest | 7.3.2 | Hace solicitudes HTTP reales a la aplicación Express en los tests, sin levantar el servidor a mano. |
 
-Descartado por la consigna: React, Next.js, ORMs, servicios externos y autenticación.
+Descartado por el equipo: React y Next.js (no hacen falta para cuatro pantallas), ORMs (el trabajo práctico es sobre SQL, así que las consultas se escriben a mano), y servicios externos y autenticación (el juego corre en un solo servidor local).
 
 ---
 

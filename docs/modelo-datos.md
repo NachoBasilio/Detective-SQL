@@ -1,6 +1,6 @@
 # Modelo de datos de Detective SQL
 
-Fuente única: [`database/detective.sql`](../database/detective.sql). Este documento resume el modelo para el informe y contiene el MER como diagrama Mermaid.
+Fuente única: [`database/detective.sql`](../database/detective.sql). Este documento resume el modelo para el informe y contiene el MER como diagrama Mermaid. El equipo también tiene el MER, con sus tres versiones, en su [tablero de Miro](https://miro.com/app/board/uXjVENHpp00=/?share_link_id=636617532777).
 
 ## MER
 
