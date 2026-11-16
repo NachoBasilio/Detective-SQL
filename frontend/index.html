@@ -51,73 +51,76 @@
   <main id="contenido" class="hoja" tabindex="-1">
     <p id="aviso" class="aviso" role="status"></p>
 
-    <section id="pantalla-expediente" data-pantalla="expediente" aria-labelledby="titulo-expediente" class="flujo">
-      <h1 id="titulo-expediente" tabindex="-1" data-i18n="pantallas.expediente">Expediente</h1>
-      <div class="pantalla__contenido flujo">
-        <p class="estado" role="status" data-i18n="expediente.cargando">Cargando el expediente…</p>
-      </div>
-      <noscript>
-        <div class="alerta">
-          <p>Detective SQL necesita JavaScript habilitado para consultar la base de datos del juego.</p>
-          <p lang="en">Detective SQL needs JavaScript enabled to query the game database.</p>
+    <!-- Las cuatro pantallas se deslizan dentro de este contenedor (js/deslizamiento.js). -->
+    <div class="pantallas deslizable">
+      <section id="pantalla-expediente" data-pantalla="expediente" aria-labelledby="titulo-expediente" class="flujo">
+        <h1 id="titulo-expediente" tabindex="-1" data-i18n="pantallas.expediente">Expediente</h1>
+        <div class="pantalla__contenido flujo">
+          <p class="estado" role="status" data-i18n="expediente.cargando">Cargando el expediente…</p>
         </div>
-      </noscript>
-    </section>
+        <noscript>
+          <div class="alerta">
+            <p>Detective SQL necesita JavaScript habilitado para consultar la base de datos del juego.</p>
+            <p lang="en">Detective SQL needs JavaScript enabled to query the game database.</p>
+          </div>
+        </noscript>
+      </section>
 
-    <section id="pantalla-investigacion" data-pantalla="investigacion" aria-labelledby="titulo-investigacion" class="flujo" hidden>
-      <h1 id="titulo-investigacion" tabindex="-1" data-i18n="pantallas.investigacion">Investigación</h1>
-      <p class="lectura" data-i18n="investigacion.intro">Revise las escenas, los interrogatorios, las coartadas y la matriz de evidencias antes de decidir a quién arrestar.</p>
+      <section id="pantalla-investigacion" data-pantalla="investigacion" aria-labelledby="titulo-investigacion" class="flujo" hidden>
+        <h1 id="titulo-investigacion" tabindex="-1" data-i18n="pantallas.investigacion">Investigación</h1>
+        <p class="lectura" data-i18n="investigacion.intro">Revise las escenas, los interrogatorios, las coartadas y la matriz de evidencias antes de decidir a quién arrestar.</p>
 
-      <div>
-        <div class="pestanas" role="tablist" aria-label="Secciones de la investigación" data-i18n-aria-label="investigacion.secciones">
-          <button type="button" role="tab" id="pestana-escenas" aria-controls="panel-escenas" aria-selected="true" data-i18n="investigacion.pestanaEscenas">Escenas y evidencias</button>
-          <button type="button" role="tab" id="pestana-interrogatorios" aria-controls="panel-interrogatorios" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaInterrogatorios">Interrogatorios</button>
-          <button type="button" role="tab" id="pestana-coartadas" aria-controls="panel-coartadas" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaCoartadas">Coartadas</button>
-          <button type="button" role="tab" id="pestana-matriz" aria-controls="panel-matriz" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaMatriz">Matriz de evidencias</button>
+        <div>
+          <div class="pestanas" role="tablist" aria-label="Secciones de la investigación" data-i18n-aria-label="investigacion.secciones">
+            <button type="button" role="tab" id="pestana-escenas" aria-controls="panel-escenas" aria-selected="true" data-i18n="investigacion.pestanaEscenas">Escenas y evidencias</button>
+            <button type="button" role="tab" id="pestana-interrogatorios" aria-controls="panel-interrogatorios" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaInterrogatorios">Interrogatorios</button>
+            <button type="button" role="tab" id="pestana-coartadas" aria-controls="panel-coartadas" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaCoartadas">Coartadas</button>
+            <button type="button" role="tab" id="pestana-matriz" aria-controls="panel-matriz" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaMatriz">Matriz de evidencias</button>
+          </div>
+
+          <div class="paneles deslizable">
+            <div role="tabpanel" id="panel-escenas" aria-labelledby="pestana-escenas" tabindex="0" class="seccion">
+              <h2 data-i18n="investigacion.escenasTitulo">Escenas del crimen</h2>
+              <p class="meta lectura" data-i18n="investigacion.escenasDescripcion">Cada escena con las evidencias encontradas y sus vínculos con los sospechosos.</p>
+              <div class="panel__contenido"></div>
+            </div>
+            <div role="tabpanel" id="panel-interrogatorios" aria-labelledby="pestana-interrogatorios" tabindex="0" class="seccion" hidden>
+              <h2 data-i18n="investigacion.interrogatoriosTitulo">Interrogatorios</h2>
+              <p class="meta lectura" data-i18n="investigacion.interrogatoriosDescripcion">Declaraciones de cada sospechoso y las contradicciones detectadas.</p>
+              <div class="panel__contenido"></div>
+            </div>
+            <div role="tabpanel" id="panel-coartadas" aria-labelledby="pestana-coartadas" tabindex="0" class="seccion" hidden>
+              <h2 data-i18n="investigacion.coartadasTitulo">Descarte de coartadas</h2>
+              <p class="meta lectura" data-i18n="investigacion.coartadasDescripcion">Evidencias con hora que ubican a un sospechoso en un lugar distinto del que declaró, dentro del horario de su coartada.</p>
+              <div class="panel__contenido"></div>
+            </div>
+            <div role="tabpanel" id="panel-matriz" aria-labelledby="pestana-matriz" tabindex="0" class="seccion" hidden>
+              <h2 data-i18n="investigacion.matrizTitulo">Matriz de evidencias</h2>
+              <p class="meta lectura" data-i18n="investigacion.matrizDescripcion">Cantidad y peso de los vínculos de cada sospechoso, calculados en la base de datos. Los pesos incriminatorio y exculpatorio se muestran por separado.</p>
+              <div class="panel__contenido"></div>
+            </div>
+          </div>
         </div>
 
-        <div class="paneles">
-          <div role="tabpanel" id="panel-escenas" aria-labelledby="pestana-escenas" tabindex="0" class="seccion">
-            <h2 data-i18n="investigacion.escenasTitulo">Escenas del crimen</h2>
-            <p class="meta lectura" data-i18n="investigacion.escenasDescripcion">Cada escena con las evidencias encontradas y sus vínculos con los sospechosos.</p>
-            <div class="panel__contenido"></div>
-          </div>
-          <div role="tabpanel" id="panel-interrogatorios" aria-labelledby="pestana-interrogatorios" tabindex="0" class="seccion" hidden>
-            <h2 data-i18n="investigacion.interrogatoriosTitulo">Interrogatorios</h2>
-            <p class="meta lectura" data-i18n="investigacion.interrogatoriosDescripcion">Declaraciones de cada sospechoso y las contradicciones detectadas.</p>
-            <div class="panel__contenido"></div>
-          </div>
-          <div role="tabpanel" id="panel-coartadas" aria-labelledby="pestana-coartadas" tabindex="0" class="seccion" hidden>
-            <h2 data-i18n="investigacion.coartadasTitulo">Descarte de coartadas</h2>
-            <p class="meta lectura" data-i18n="investigacion.coartadasDescripcion">Evidencias con hora que ubican a un sospechoso en un lugar distinto del que declaró, dentro del horario de su coartada.</p>
-            <div class="panel__contenido"></div>
-          </div>
-          <div role="tabpanel" id="panel-matriz" aria-labelledby="pestana-matriz" tabindex="0" class="seccion" hidden>
-            <h2 data-i18n="investigacion.matrizTitulo">Matriz de evidencias</h2>
-            <p class="meta lectura" data-i18n="investigacion.matrizDescripcion">Cantidad y peso de los vínculos de cada sospechoso, calculados en la base de datos. Los pesos incriminatorio y exculpatorio se muestran por separado.</p>
-            <div class="panel__contenido"></div>
-          </div>
+        <div class="acciones">
+          <a class="boton boton--primario" href="#acusacion" data-i18n="investigacion.pasarAcusacion">Pasar a la acusación</a>
         </div>
-      </div>
+      </section>
 
-      <div class="acciones">
-        <a class="boton boton--primario" href="#acusacion" data-i18n="investigacion.pasarAcusacion">Pasar a la acusación</a>
-      </div>
-    </section>
+      <section id="pantalla-acusacion" data-pantalla="acusacion" aria-labelledby="titulo-acusacion" class="flujo" hidden>
+        <h1 id="titulo-acusacion" tabindex="-1" data-i18n="pantallas.acusacion">Acusación</h1>
+        <p class="lectura" data-i18n="acusacion.intro">Elija a quién arrestar. Antes de enviar la orden se le pedirá una confirmación.</p>
+        <div class="pantalla__contenido flujo"></div>
+      </section>
 
-    <section id="pantalla-acusacion" data-pantalla="acusacion" aria-labelledby="titulo-acusacion" class="flujo" hidden>
-      <h1 id="titulo-acusacion" tabindex="-1" data-i18n="pantallas.acusacion">Acusación</h1>
-      <p class="lectura" data-i18n="acusacion.intro">Elija a quién arrestar. Antes de enviar la orden se le pedirá una confirmación.</p>
-      <div class="pantalla__contenido flujo"></div>
-    </section>
-
-    <section id="pantalla-resultado" data-pantalla="resultado" aria-labelledby="titulo-resultado" class="flujo" hidden>
-      <div class="veredicto">
-        <h1 id="titulo-resultado" tabindex="-1" data-i18n="pantallas.resultado">Resultado</h1>
-        <p class="veredicto__sello"></p>
-      </div>
-      <div class="pantalla__contenido flujo"></div>
-    </section>
+      <section id="pantalla-resultado" data-pantalla="resultado" aria-labelledby="titulo-resultado" class="flujo" hidden>
+        <div class="veredicto">
+          <h1 id="titulo-resultado" tabindex="-1" data-i18n="pantallas.resultado">Resultado</h1>
+          <p class="veredicto__sello"></p>
+        </div>
+        <div class="pantalla__contenido flujo"></div>
+      </section>
+    </div>
   </main>
 </body>
 </html>

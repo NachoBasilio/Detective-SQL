@@ -1,13 +1,14 @@
 // Punto de entrada: estado de la partida actual, navegación entre las cuatro
 // pantallas con el hash de la URL (para que el botón "atrás" del navegador
-// funcione), recuperación de la partida al recargar la página y preferencias
-// de idioma y tema.
+// funcione) y con un deslizamiento lateral según su orden, recuperación de la
+// partida al recargar la página y preferencias de idioma y tema.
 
 import * as api from './api.js';
 import * as expediente from './expediente.js';
 import * as investigacion from './investigacion.js';
 import * as acusacion from './acusacion.js';
 import * as resultado from './resultado.js';
+import { crearDeslizador, prefiereMenosMovimiento } from './deslizamiento.js';
 import { crear, crearSello, textoDeError } from './dom.js';
 import { t } from './i18n/traductor.js';
 import { iniciarPreferencias } from './preferencias.js';
@@ -18,12 +19,14 @@ import { iniciarPreferencias } from './preferencias.js';
  */
 const juego = { partida: null, arresto: null };
 
+// En el orden del juego: ese orden decide hacia qué lado se desliza el cambio de pantalla.
 const PANTALLAS = {
   expediente: { modulo: expediente, disponible: () => true },
   investigacion: { modulo: investigacion, disponible: () => juego.partida !== null },
   acusacion: { modulo: acusacion, disponible: () => juego.partida !== null },
   resultado: { modulo: resultado, disponible: () => juego.arresto !== null },
 };
+const ORDEN_DE_PANTALLAS = Object.keys(PANTALLAS);
 
 const MOTIVOS_NO_DISPONIBLE = {
   investigacion: 'avisos.investigacionNoDisponible',
@@ -136,6 +139,13 @@ function actualizarCabecera() {
 
 let pantallaActual = 'expediente';
 
+// Las cuatro secciones se deslizan dentro de .pantallas con el mismo movimiento que las pestañas de la investigación.
+const deslizadorDePantallas = crearDeslizador({
+  contenedor: document.querySelector('.pantallas'),
+  elementos: ORDEN_DE_PANTALLAS.map((nombre) => document.getElementById(`pantalla-${nombre}`)),
+  visibleEnReposo: () => document.getElementById(`pantalla-${pantallaActual}`),
+});
+
 function actualizarNavegacion() {
   for (const enlace of document.querySelectorAll('.navegacion [data-pantalla]')) {
     const nombre = enlace.dataset.pantalla;
@@ -156,26 +166,44 @@ function nombreDesdeHash() {
   return Object.hasOwn(PANTALLAS, nombre) ? nombre : null;
 }
 
-function mostrarPantalla(nombrePedido, { moverFoco }) {
+/**
+ * Muestra una pantalla. Con `animar`, el cambio a otra pantalla se desliza
+ * según el orden del juego: la siguiente entra por la derecha y la anterior
+ * por la izquierda. La carga inicial, el reemplazo por el expediente cuando la
+ * pantalla pedida no está disponible y prefers-reduced-motion cambian sin movimiento.
+ */
+function mostrarPantalla(nombrePedido, { moverFoco, animar = false }) {
   let nombre = nombrePedido;
+  let conMovimiento = animar;
   if (!PANTALLAS[nombre].disponible()) {
     // Un aviso previo (por ejemplo, "la partida ya terminó" al recargar) explica mejor qué pasó.
     if (aviso === null) mostrarAviso(() => t(MOTIVOS_NO_DISPONIBLE[nombre]));
     nombre = 'expediente';
     history.replaceState(null, '', '#expediente');
+    conMovimiento = false;
   }
 
-  if (nombre !== pantallaActual) PANTALLAS[pantallaActual].modulo.alSalir?.();
+  const anterior = pantallaActual;
+  if (nombre !== anterior) PANTALLAS[anterior].modulo.alSalir?.();
   pantallaActual = nombre;
-  for (const seccion of document.querySelectorAll('main > section[data-pantalla]')) {
-    seccion.hidden = seccion.dataset.pantalla !== nombre;
-  }
+  // Un deslizamiento anterior que no terminó se corta acá: en reposo solo queda visible la pantalla nueva.
+  deslizadorDePantallas.dejarEnReposo();
+  const seccion = document.getElementById(`pantalla-${nombre}`);
+  const saliente = document.getElementById(`pantalla-${anterior}`);
+  conMovimiento = conMovimiento && nombre !== anterior && !prefiereMenosMovimiento();
+  // La pantalla nueva entra al flujo y la anterior queda superpuesta mientras sale: la cabecera no se mueve.
+  if (conMovimiento) deslizadorDePantallas.prepararMovimiento(seccion, saliente);
   document.title = t('documento.titulo', { pantalla: t(`pantallas.${nombre}`) });
   actualizarNavegacion();
 
-  const seccion = document.getElementById(`pantalla-${nombre}`);
   PANTALLAS[nombre].modulo.mostrar(seccion, contexto);
+  // El foco se mueve antes de que empiece el movimiento: si la página tiene que
+  // desplazarse hasta el título, lo hace una sola vez y no a mitad del deslizamiento.
   if (moverFoco) seccion.querySelector('h1').focus();
+  if (conMovimiento) {
+    const sentido = ORDEN_DE_PANTALLAS.indexOf(nombre) > ORDEN_DE_PANTALLAS.indexOf(anterior) ? 1 : -1;
+    deslizadorDePantallas.animarAvance(saliente, seccion, sentido, 0, 1);
+  }
 }
 
 function ir(nombre) {
@@ -268,7 +296,7 @@ window.addEventListener('hashchange', () => {
   const nombre = nombreDesdeHash();
   if (nombre === null) return;
   borrarAviso();
-  mostrarPantalla(nombre, { moverFoco: true });
+  mostrarPantalla(nombre, { moverFoco: true, animar: true });
 });
 
 // Los textos fijos se traducen antes de esperar a la API.

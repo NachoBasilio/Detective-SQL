@@ -59,9 +59,10 @@
   --ancho-tabla-evidencias: 52rem;
   --ancho-confirmacion: 44rem;
   --duracion: 180ms;
-  --duracion-pestana: 240ms;
+  --duracion-pestana: 300ms;
   --duracion-sello: 360ms;
   --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
+  --curva-pestana: ease-out;
 }
 
 /* Tema oscuro opcional: el claro es el predeterminado y este se activa solo
@@ -613,23 +614,28 @@ a:hover {
 /* Contenedor de los paneles: el desplazamiento vertical y el zoom quedan para
    el navegador; el gesto horizontal lo maneja js/pestanas.js. */
 .paneles {
-  position: relative;
   touch-action: pan-y pinch-zoom;
 }
 
-/* Solo mientras se desliza: recorta los paneles para que no aparezca scroll horizontal. */
-.paneles--en-movimiento {
+/* Deslizamiento lateral (js/deslizamiento.js): paneles de la investigación y
+   pantallas principales. */
+.deslizable {
+  position: relative;
+}
+
+/* Solo mientras se desliza: recorta para que no aparezca scroll horizontal. */
+.deslizable--en-movimiento {
   overflow: hidden;
   overflow: clip;
 }
 
-.paneles--en-movimiento > [role="tabpanel"] {
+.deslizable--en-movimiento > * {
   will-change: transform, opacity;
 }
 
-/* El panel que sale (o el vecino durante el gesto) se superpone alineado arriba,
-   así la altura la define un solo panel y la lista de pestañas no se mueve. */
-.panel--superpuesto {
+/* El elemento que sale (o el vecino durante el gesto) se superpone alineado
+   arriba: la altura la define un solo elemento y lo que está encima no se mueve. */
+.deslizable__superpuesto {
   position: absolute;
   inset: 0 0 auto;
 }

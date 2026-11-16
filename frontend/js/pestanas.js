@@ -1,9 +1,11 @@
 // Pestañas accesibles (patrón ARIA de pestañas) con una microinteracción: al
 // cambiar de pestaña, el contenido se desliza hacia el costado que corresponde
 // al orden de las pestañas, y en pantallas táctiles se puede deslizar con el
-// dedo. Solo se animan transform y opacity, con la duración del token
-// --duracion-pestana; con prefers-reduced-motion el cambio es instantáneo.
+// dedo. El movimiento lo hace js/deslizamiento.js, el mismo que usan las
+// pantallas principales; con prefers-reduced-motion el cambio es instantáneo.
 // En reposo, los paneles inactivos tienen el atributo hidden.
+
+import { crearDeslizador, estiloDeAvance, leerCurva, leerDuracion, prefiereMenosMovimiento } from './deslizamiento.js';
 
 const UMBRAL_DE_DIRECCION = 10; // px que se mueve el dedo antes de decidir si el gesto es horizontal
 const DOMINIO_HORIZONTAL = 1.2; // el desplazamiento horizontal tiene que superar al vertical en esta proporción
@@ -11,38 +13,9 @@ const FRACCION_PARA_AVANZAR = 0.25; // parte del ancho que hay que arrastrar par
 const VELOCIDAD_DE_IMPULSO = 0.5; // px/ms: un movimiento rápido y corto también pasa de pestaña
 const DISTANCIA_MINIMA_DE_IMPULSO = 30; // px
 const RESISTENCIA_EN_EL_BORDE = 0.25; // sin pestaña vecina, el contenido acompaña poco al dedo
-const DURACION_MINIMA = 80; // ms, para terminar un arrastre ya casi completo
 
 // Los gestos que empiezan sobre un control o una tabla desplazable no cambian de pestaña.
 const SELECTOR_SIN_GESTO = 'a[href], button, input, select, textarea, label, summary, [contenteditable], .tabla-contenedor';
-
-function prefiereMenosMovimiento() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
-/** Duración en milisegundos de un token de movimiento de estilos.css ("240ms" o "0.24s"). */
-function leerDuracion(token, respaldo) {
-  const valor = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
-  const numero = Number.parseFloat(valor);
-  if (!Number.isFinite(numero)) return respaldo;
-  return valor.endsWith('ms') ? numero : numero * 1000;
-}
-
-function leerCurva() {
-  return getComputedStyle(document.documentElement).getPropertyValue('--curva-salida').trim() || 'ease-out';
-}
-
-/**
- * Estilo de los dos paneles para un avance entre 0 (panel actual en su lugar)
- * y 1 (panel vecino en su lugar). sentido = 1 si el vecino entra por la
- * derecha (pestaña siguiente) y -1 si entra por la izquierda.
- */
-function estiloDeAvance(sentido, avance) {
-  return {
-    saliente: { transform: `translateX(${-sentido * avance * 100}%)`, opacity: 1 - avance },
-    entrante: { transform: `translateX(${sentido * (1 - avance) * 100}%)`, opacity: avance },
-  };
-}
 
 /**
  * @param {HTMLElement} lista elemento con role="tablist"
@@ -52,8 +25,12 @@ export function activarPestanas(lista, contenedor) {
   const pestanas = [...lista.querySelectorAll('[role="tab"]')];
   const paneles = pestanas.map((pestana) => document.getElementById(pestana.getAttribute('aria-controls')));
   let actual = Math.max(0, pestanas.findIndex((pestana) => pestana.getAttribute('aria-selected') === 'true'));
-  let animaciones = [];
   let gesto = null;
+  const { dejarEnReposo, prepararMovimiento, seguir, animarAvance, deslizar } = crearDeslizador({
+    contenedor,
+    elementos: paneles,
+    visibleEnReposo: () => paneles[actual],
+  });
 
   function marcarSeleccion(indice) {
     actual = indice;
@@ -61,46 +38,6 @@ export function activarPestanas(lista, contenedor) {
       pestana.setAttribute('aria-selected', String(i === indice));
       pestana.tabIndex = i === indice ? 0 : -1;
     });
-  }
-
-  /** Termina cualquier movimiento y deja visible solo el panel seleccionado. */
-  function dejarEnReposo() {
-    for (const animacion of animaciones) animacion.cancel();
-    animaciones = [];
-    contenedor.classList.remove('paneles--en-movimiento');
-    paneles.forEach((panel, i) => {
-      panel.classList.remove('panel--superpuesto');
-      panel.style.removeProperty('transform');
-      panel.style.removeProperty('opacity');
-      panel.hidden = i !== actual;
-    });
-  }
-
-  /** Prepara dos paneles para moverse: uno sigue en el flujo y el otro se superpone arriba, alineado. */
-  function prepararMovimiento(enFlujo, superpuesto) {
-    contenedor.classList.add('paneles--en-movimiento');
-    enFlujo.hidden = false;
-    superpuesto.hidden = false;
-    superpuesto.classList.add('panel--superpuesto');
-  }
-
-  /** Anima los dos paneles de un avance a otro y luego los deja en reposo. */
-  function animarAvance(saliente, entrante, sentido, desde, hasta, duracionTotal) {
-    const duracion = Math.max(DURACION_MINIMA, duracionTotal * Math.abs(hasta - desde));
-    const opciones = { duration: duracion, easing: leerCurva(), fill: 'both' };
-    const inicio = estiloDeAvance(sentido, desde);
-    const fin = estiloDeAvance(sentido, hasta);
-    animaciones = [
-      saliente.animate([inicio.saliente, fin.saliente], opciones),
-      entrante.animate([inicio.entrante, fin.entrante], opciones),
-    ];
-    const propias = animaciones;
-    Promise.all(propias.map((animacion) => animacion.finished))
-      .then(() => {
-        // Si otra selección ya canceló este movimiento, no hay nada que limpiar.
-        if (animaciones === propias) dejarEnReposo();
-      })
-      .catch(() => {});
   }
 
   function seleccionar(indice) {
@@ -114,8 +51,7 @@ export function activarPestanas(lista, contenedor) {
       return;
     }
     // El panel nuevo entra al flujo enseguida: la altura cambia una sola vez y la lista de pestañas no se mueve.
-    prepararMovimiento(paneles[indice], paneles[anterior]);
-    animarAvance(paneles[anterior], paneles[indice], indice > anterior ? 1 : -1, 0, 1, leerDuracion('--duracion-pestana', 240));
+    deslizar(paneles[anterior], paneles[indice], indice > anterior ? 1 : -1);
   }
 
   lista.addEventListener('click', (evento) => {
@@ -148,7 +84,7 @@ export function activarPestanas(lista, contenedor) {
     if (gesto.vecino !== null && gesto.vecino !== indice) {
       const anterior = paneles[gesto.vecino];
       anterior.hidden = true;
-      anterior.classList.remove('panel--superpuesto');
+      anterior.classList.remove('deslizable__superpuesto');
       anterior.style.removeProperty('transform');
       anterior.style.removeProperty('opacity');
       gesto.vecino = null;
@@ -194,18 +130,13 @@ export function activarPestanas(lista, contenedor) {
     }
 
     const panelActual = paneles[actual];
-    const duracion = leerDuracion('--duracion-pestana', 240);
     if (vecino === null) {
       // Borde sin vecino: el contenido vuelve a su lugar.
-      const opciones = { duration: Math.min(duracion, 200), easing: leerCurva(), fill: 'both' };
-      animaciones = [panelActual.animate(
+      const opciones = { duration: Math.min(leerDuracion(), 200), easing: leerCurva(), fill: 'both' };
+      seguir([panelActual.animate(
         [{ transform: panelActual.style.transform || 'translateX(0)' }, { transform: 'translateX(0)' }],
         opciones,
-      )];
-      const propias = animaciones;
-      propias[0].finished.then(() => {
-        if (animaciones === propias) dejarEnReposo();
-      }).catch(() => {});
+      )]);
       panelActual.style.removeProperty('transform');
       return;
     }
@@ -222,7 +153,7 @@ export function activarPestanas(lista, contenedor) {
       panel.style.removeProperty('transform');
       panel.style.removeProperty('opacity');
     }
-    animarAvance(saliente, entrante, sentido, avanceActual, avanza ? 1 : 0, duracion);
+    animarAvance(saliente, entrante, sentido, avanceActual, avanza ? 1 : 0);
   }
 
   contenedor.addEventListener('pointerdown', (evento) => {
