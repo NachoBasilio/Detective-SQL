@@ -97,3 +97,11 @@ Registro de los pedidos importantes hechos a herramientas de IA, las respuestas 
 - **Pedido:** ordenar el sistema visual de la plataforma para reutilizar colores, medidas y componentes sin rediseñar la interfaz.
 - **Respuesta:** se documentaron los grupos de tokens y el catálogo de componentes en `docs/design.md`; se reemplazaron medidas repetidas de controles, bordes, tablas, confirmación y sellos por tokens en `frontend/css/estilos.css`; se agregaron pruebas que detectan valores compartidos fuera de `:root`.
 - **Decisión:** aceptado para revisión. Se conserva la identidad visual actual y se verificó en navegador que no haya desborde horizontal a 320, 768 y 1280 px.
+
+### 2026-11-15 — Instalación en Windows sin compilar better-sqlite3
+
+- **Integrante:** Lucas Gabriel Ruiz.
+- **Fase:** Aplicación.
+- **Pedido:** explicar por qué `npm install` fallaba en Windows con `Could not find any Python installation to use` y dejar una solución para todo el equipo.
+- **Respuesta:** `better-sqlite3` 13.2.0 trae binarios precompilados y declara `"gypfile": false`, pero `package-lock.json` no guarda ese campo y npm 10 ejecuta igual `node-gyp rebuild` al instalar desde el lock. La IA lo reprodujo en un proyecto vacío: sin lock la instalación funciona y con lock falla con el mismo error. Propuso un `.npmrc` con `ignore-scripts=true`, ya que ninguna dependencia necesita scripts de instalación, y una nota en el README. npm agrega `"hasInstallScript": true` al lock en cada instalación, así que ese cambio se incluye para que el lock no quede modificado.
+- **Decisión:** aceptado. Se descartó instalar Python y Visual Studio Build Tools porque solo servirían para compilar binarios que el paquete ya trae. Verificado en Windows con Node.js 22.22.3: `npm install` sin opciones instala las dependencias y `npm test` aprueba 149 de 149 tests. Riesgo aceptado: si en el futuro se agrega una dependencia que necesite su script de instalación, va a haber que revisar esta configuración.

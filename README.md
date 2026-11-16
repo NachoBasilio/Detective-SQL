@@ -43,6 +43,8 @@ npm install
 
 `npm install` descarga Express, `better-sqlite3` y Supertest (solo para los tests). No se usan servicios externos, variables de entorno obligatorias ni archivos fuera del repositorio.
 
+El archivo [`.npmrc`](.npmrc) define `ignore-scripts=true`. Sin él, npm intenta compilar `better-sqlite3` con `node-gyp` al instalar desde `package-lock.json`, y en Windows falla con `Could not find any Python installation to use`. La compilación no hace falta porque el paquete ya trae los binarios, y ninguna otra dependencia usa scripts de instalación. Los comandos `npm start`, `npm test` y `npm run ...` se ejecutan igual.
+
 ## Inicializar la base SQLite
 
 | Comando | Qué hace |
