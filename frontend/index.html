@@ -3,32 +3,47 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Detective SQL: un juego de detectives que se resuelve con consultas sobre una base de datos SQLite.">
+  <meta name="description" content="Detective SQL: un juego de detectives que se resuelve con consultas sobre una base de datos SQLite." data-i18n-content="documento.descripcion">
   <meta name="color-scheme" content="light">
   <title>Detective SQL</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script src="js/preferencias-iniciales.js"></script>
   <link rel="stylesheet" href="css/estilos.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <a class="saltar" href="#contenido">Ir al contenido</a>
+  <a class="saltar" href="#contenido" data-i18n="cabecera.saltar">Ir al contenido</a>
 
   <header class="cabecera">
     <div class="cabecera__interior">
       <p class="marca">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
-          <circle cx="10.5" cy="10.5" r="6.5"></circle>
-          <path d="m15.5 15.5 5 5"></path>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M2.5 10.5c3-1 16-1 19 0"></path>
+          <path d="M6 10.2 7.5 5.4a1.6 1.6 0 0 1 2.2-1L12 5.3l2.3-.9a1.6 1.6 0 0 1 2.2 1L18 10.2"></path>
+          <path d="M8.5 13.5c.8 1.6 2 2.5 3.5 2.5s2.7-.9 3.5-2.5"></path>
+          <path d="M5 21c.4-2.4 1.8-3.9 4-4.5l3 2.5 3-2.5c2.2.6 3.6 2.1 4 4.5"></path>
         </svg>
         Detective SQL
       </p>
       <p class="estado-partida" id="estado-partida" aria-live="polite">Sin partida iniciada</p>
+      <div class="preferencias">
+        <div class="preferencias__idioma" role="group" aria-label="Idioma" data-i18n-aria-label="cabecera.idioma">
+          <button type="button" class="preferencia" data-idioma="es" lang="es" aria-label="Español" aria-pressed="true">ES</button>
+          <button type="button" class="preferencia" data-idioma="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+        </div>
+        <button type="button" class="preferencia" id="alternar-tema" aria-pressed="false" aria-label="Tema oscuro" data-i18n-aria-label="cabecera.temaOscuro" title="Tema oscuro" data-i18n-title="cabecera.temaOscuro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"></path>
+          </svg>
+        </button>
+      </div>
     </div>
-    <nav class="navegacion" aria-label="Pantallas del juego">
+    <nav class="navegacion" aria-label="Pantallas del juego" data-i18n-aria-label="cabecera.navegacion">
       <ol>
-        <li><a role="link" href="#expediente" data-pantalla="expediente">Expediente</a></li>
-        <li><a role="link" data-pantalla="investigacion" aria-disabled="true">Investigación</a></li>
-        <li><a role="link" data-pantalla="acusacion" aria-disabled="true">Acusación</a></li>
-        <li><a role="link" data-pantalla="resultado" aria-disabled="true">Resultado</a></li>
+        <li><a role="link" href="#expediente" data-pantalla="expediente" data-i18n="pantallas.expediente">Expediente</a></li>
+        <li><a role="link" data-pantalla="investigacion" aria-disabled="true" data-i18n="pantallas.investigacion">Investigación</a></li>
+        <li><a role="link" data-pantalla="acusacion" aria-disabled="true" data-i18n="pantallas.acusacion">Acusación</a></li>
+        <li><a role="link" data-pantalla="resultado" aria-disabled="true" data-i18n="pantallas.resultado">Resultado</a></li>
       </ol>
     </nav>
   </header>
@@ -37,63 +52,68 @@
     <p id="aviso" class="aviso" role="status"></p>
 
     <section id="pantalla-expediente" data-pantalla="expediente" aria-labelledby="titulo-expediente" class="flujo">
-      <h1 id="titulo-expediente" tabindex="-1">Expediente</h1>
+      <h1 id="titulo-expediente" tabindex="-1" data-i18n="pantallas.expediente">Expediente</h1>
       <div class="pantalla__contenido flujo">
-        <p class="estado" role="status">Cargando el expediente…</p>
+        <p class="estado" role="status" data-i18n="expediente.cargando">Cargando el expediente…</p>
       </div>
       <noscript>
-        <p class="alerta">Detective SQL necesita JavaScript habilitado para consultar la base de datos del juego.</p>
+        <div class="alerta">
+          <p>Detective SQL necesita JavaScript habilitado para consultar la base de datos del juego.</p>
+          <p lang="en">Detective SQL needs JavaScript enabled to query the game database.</p>
+        </div>
       </noscript>
     </section>
 
     <section id="pantalla-investigacion" data-pantalla="investigacion" aria-labelledby="titulo-investigacion" class="flujo" hidden>
-      <h1 id="titulo-investigacion" tabindex="-1">Investigación</h1>
-      <p class="lectura">Revise las escenas, los interrogatorios, las coartadas y la matriz de evidencias antes de decidir a quién arrestar.</p>
+      <h1 id="titulo-investigacion" tabindex="-1" data-i18n="pantallas.investigacion">Investigación</h1>
+      <p class="lectura" data-i18n="investigacion.intro">Revise las escenas, los interrogatorios, las coartadas y la matriz de evidencias antes de decidir a quién arrestar.</p>
 
       <div>
-        <div class="pestanas" role="tablist" aria-label="Secciones de la investigación">
-          <button type="button" role="tab" id="pestana-escenas" aria-controls="panel-escenas" aria-selected="true">Escenas y evidencias</button>
-          <button type="button" role="tab" id="pestana-interrogatorios" aria-controls="panel-interrogatorios" aria-selected="false" tabindex="-1">Interrogatorios</button>
-          <button type="button" role="tab" id="pestana-coartadas" aria-controls="panel-coartadas" aria-selected="false" tabindex="-1">Coartadas</button>
-          <button type="button" role="tab" id="pestana-matriz" aria-controls="panel-matriz" aria-selected="false" tabindex="-1">Matriz de evidencias</button>
+        <div class="pestanas" role="tablist" aria-label="Secciones de la investigación" data-i18n-aria-label="investigacion.secciones">
+          <button type="button" role="tab" id="pestana-escenas" aria-controls="panel-escenas" aria-selected="true" data-i18n="investigacion.pestanaEscenas">Escenas y evidencias</button>
+          <button type="button" role="tab" id="pestana-interrogatorios" aria-controls="panel-interrogatorios" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaInterrogatorios">Interrogatorios</button>
+          <button type="button" role="tab" id="pestana-coartadas" aria-controls="panel-coartadas" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaCoartadas">Coartadas</button>
+          <button type="button" role="tab" id="pestana-matriz" aria-controls="panel-matriz" aria-selected="false" tabindex="-1" data-i18n="investigacion.pestanaMatriz">Matriz de evidencias</button>
         </div>
 
-        <div role="tabpanel" id="panel-escenas" aria-labelledby="pestana-escenas" tabindex="0" class="seccion">
-          <h2>Escenas del crimen</h2>
-          <p class="meta lectura">Cada escena con las evidencias encontradas y sus vínculos con los sospechosos.</p>
-          <div class="panel__contenido"></div>
-        </div>
-        <div role="tabpanel" id="panel-interrogatorios" aria-labelledby="pestana-interrogatorios" tabindex="0" class="seccion" hidden>
-          <h2>Interrogatorios</h2>
-          <p class="meta lectura">Declaraciones de cada sospechoso y las contradicciones detectadas.</p>
-          <div class="panel__contenido"></div>
-        </div>
-        <div role="tabpanel" id="panel-coartadas" aria-labelledby="pestana-coartadas" tabindex="0" class="seccion" hidden>
-          <h2>Descarte de coartadas</h2>
-          <p class="meta lectura">Evidencias con hora que ubican a un sospechoso en un lugar distinto del que declaró, dentro del horario de su coartada.</p>
-          <div class="panel__contenido"></div>
-        </div>
-        <div role="tabpanel" id="panel-matriz" aria-labelledby="pestana-matriz" tabindex="0" class="seccion" hidden>
-          <h2>Matriz de evidencias</h2>
-          <p class="meta lectura">Cantidad y peso de los vínculos de cada sospechoso, calculados en la base de datos. Los pesos incriminatorio y exculpatorio se muestran por separado.</p>
-          <div class="panel__contenido"></div>
+        <div class="paneles">
+          <div role="tabpanel" id="panel-escenas" aria-labelledby="pestana-escenas" tabindex="0" class="seccion">
+            <h2 data-i18n="investigacion.escenasTitulo">Escenas del crimen</h2>
+            <p class="meta lectura" data-i18n="investigacion.escenasDescripcion">Cada escena con las evidencias encontradas y sus vínculos con los sospechosos.</p>
+            <div class="panel__contenido"></div>
+          </div>
+          <div role="tabpanel" id="panel-interrogatorios" aria-labelledby="pestana-interrogatorios" tabindex="0" class="seccion" hidden>
+            <h2 data-i18n="investigacion.interrogatoriosTitulo">Interrogatorios</h2>
+            <p class="meta lectura" data-i18n="investigacion.interrogatoriosDescripcion">Declaraciones de cada sospechoso y las contradicciones detectadas.</p>
+            <div class="panel__contenido"></div>
+          </div>
+          <div role="tabpanel" id="panel-coartadas" aria-labelledby="pestana-coartadas" tabindex="0" class="seccion" hidden>
+            <h2 data-i18n="investigacion.coartadasTitulo">Descarte de coartadas</h2>
+            <p class="meta lectura" data-i18n="investigacion.coartadasDescripcion">Evidencias con hora que ubican a un sospechoso en un lugar distinto del que declaró, dentro del horario de su coartada.</p>
+            <div class="panel__contenido"></div>
+          </div>
+          <div role="tabpanel" id="panel-matriz" aria-labelledby="pestana-matriz" tabindex="0" class="seccion" hidden>
+            <h2 data-i18n="investigacion.matrizTitulo">Matriz de evidencias</h2>
+            <p class="meta lectura" data-i18n="investigacion.matrizDescripcion">Cantidad y peso de los vínculos de cada sospechoso, calculados en la base de datos. Los pesos incriminatorio y exculpatorio se muestran por separado.</p>
+            <div class="panel__contenido"></div>
+          </div>
         </div>
       </div>
 
       <div class="acciones">
-        <a class="boton boton--primario" href="#acusacion">Pasar a la acusación</a>
+        <a class="boton boton--primario" href="#acusacion" data-i18n="investigacion.pasarAcusacion">Pasar a la acusación</a>
       </div>
     </section>
 
     <section id="pantalla-acusacion" data-pantalla="acusacion" aria-labelledby="titulo-acusacion" class="flujo" hidden>
-      <h1 id="titulo-acusacion" tabindex="-1">Acusación</h1>
-      <p class="lectura">Elija a quién arrestar. Antes de enviar la orden se le pedirá una confirmación.</p>
+      <h1 id="titulo-acusacion" tabindex="-1" data-i18n="pantallas.acusacion">Acusación</h1>
+      <p class="lectura" data-i18n="acusacion.intro">Elija a quién arrestar. Antes de enviar la orden se le pedirá una confirmación.</p>
       <div class="pantalla__contenido flujo"></div>
     </section>
 
     <section id="pantalla-resultado" data-pantalla="resultado" aria-labelledby="titulo-resultado" class="flujo" hidden>
       <div class="veredicto">
-        <h1 id="titulo-resultado" tabindex="-1">Resultado</h1>
+        <h1 id="titulo-resultado" tabindex="-1" data-i18n="pantallas.resultado">Resultado</h1>
         <p class="veredicto__sello"></p>
       </div>
       <div class="pantalla__contenido flujo"></div>

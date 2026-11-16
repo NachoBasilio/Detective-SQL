@@ -18,8 +18,21 @@ function leerIdDelCuerpo(valor) {
   return Number.isSafeInteger(valor) && valor > 0 ? valor : null;
 }
 
+/**
+ * Id opcional recibido en la query string: undefined si no vino, null si no es
+ * un único entero positivo (un parámetro repetido llega como arreglo).
+ */
+function leerIdDeConsulta(valor) {
+  if (valor === undefined) return undefined;
+  return typeof valor === 'string' ? leerIdDeRuta(valor) : null;
+}
+
 function mensajeCampoInvalido(campo) {
   return `El campo ${campo} es obligatorio y debe ser un número entero positivo.`;
+}
+
+function mensajeParametroInvalido(parametro) {
+  return `El parámetro ${parametro} debe ser un número entero positivo.`;
 }
 
 /**
@@ -52,7 +65,9 @@ module.exports = {
   MENSAJE_ID_INVALIDO,
   leerIdDeRuta,
   leerIdDelCuerpo,
+  leerIdDeConsulta,
   mensajeCampoInvalido,
+  mensajeParametroInvalido,
   responderConsultaPorId,
   traducirErrorDeSqlite,
 };

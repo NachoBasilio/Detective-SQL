@@ -16,6 +16,7 @@ const {
   ID_DIEGO,
   ID_PARTIDA_DEMO,
   FORMATO_FECHA_SQLITE,
+  TEXTO_DE_CULPABILIDAD,
   crearEntorno,
   crearPartida,
   agregarOtroCaso,
@@ -114,6 +115,112 @@ describe('POST /api/partidas', () => {
       assert.equal(respuesta.status, 400);
       assert.equal(typeof respuesta.body.error, 'string');
     }
+    afirmarTablasIntactas(entorno.baseDeDatos, filasAntes);
+  });
+});
+
+describe('GET /api/partidas', () => {
+  const CAMPOS_DE_PARTIDA = ['casoId', 'estado', 'fechaInicio', 'id'];
+
+  let entorno;
+  beforeEach(() => {
+    entorno = crearEntorno();
+  });
+  afterEach(() => entorno.baseDeDatos.close());
+
+  /** Inserta una partida en curso con una fecha de inicio fija y devuelve su id. */
+  function insertarPartida(casoId, fechaInicio) {
+    return Number(entorno.baseDeDatos
+      .prepare('INSERT INTO partida (caso_id, fecha_inicio) VALUES (?, ?)')
+      .run(casoId, fechaInicio).lastInsertRowid);
+  }
+
+  test('lista las partidas con los mismos campos que GET /api/partidas/:id, de la más reciente a la más antigua', async () => {
+    // La partida demo empieza al crear la base; estas fechas quedan antes y después.
+    const antigua = insertarPartida(ID_CASO, '2000-01-01 10:00:00');
+    const reciente = insertarPartida(ID_CASO, '2099-01-01 10:00:00');
+    const empatada = insertarPartida(ID_CASO, '2099-01-01 10:00:00');
+
+    const respuesta = await entorno.api.get('/api/partidas');
+
+    assert.equal(respuesta.status, 200);
+    assert.match(respuesta.headers['content-type'], /application\/json/);
+    // Con la misma fecha de inicio, primero la de id mayor.
+    assert.deepEqual(respuesta.body.map((partida) => partida.id), [empatada, reciente, ID_PARTIDA_DEMO, antigua]);
+    for (const partida of respuesta.body) {
+      assert.deepEqual(Object.keys(partida).sort(), CAMPOS_DE_PARTIDA);
+      assert.match(partida.fechaInicio, FORMATO_FECHA_SQLITE);
+      const individual = await entorno.api.get(`/api/partidas/${partida.id}`);
+      assert.deepEqual(partida, individual.body);
+    }
+  });
+
+  test('filtra por estado y por caso con parámetros de la consulta', async () => {
+    const { idCaso: otroCaso } = agregarOtroCaso(entorno.baseDeDatos);
+    const enCursoDelCaso = await crearPartida(entorno.api);
+    const enCursoDelOtroCaso = await crearPartida(entorno.api, otroCaso);
+    const ganada = await crearPartida(entorno.api);
+    await entorno.api.post(`/api/partidas/${ganada}/arrestos`).send({ sospechosoId: ID_CARLA }).expect(201);
+
+    const ids = async (ruta) => {
+      const respuesta = await entorno.api.get(ruta);
+      assert.equal(respuesta.status, 200, ruta);
+      return respuesta.body.map((partida) => partida.id).sort((a, b) => a - b);
+    };
+
+    assert.deepEqual(await ids('/api/partidas?estado=en_curso'), [enCursoDelCaso, enCursoDelOtroCaso]);
+    assert.deepEqual(await ids('/api/partidas?estado=perdida'), [ID_PARTIDA_DEMO]);
+    assert.deepEqual(await ids('/api/partidas?estado=ganada'), [ganada]);
+    assert.deepEqual(await ids(`/api/partidas?casoId=${otroCaso}`), [enCursoDelOtroCaso]);
+    assert.deepEqual(await ids(`/api/partidas?casoId=${ID_CASO}`), [ID_PARTIDA_DEMO, enCursoDelCaso, ganada]);
+    assert.deepEqual(await ids(`/api/partidas?estado=en_curso&casoId=${ID_CASO}`), [enCursoDelCaso]);
+    // Los filtros no revalidan el CHECK ni la existencia del caso: sin coincidencias, lista vacía.
+    assert.deepEqual(await ids('/api/partidas?estado=abandonada'), []);
+    assert.deepEqual(await ids('/api/partidas?casoId=999'), []);
+  });
+
+  test('nunca devuelve el acusado ni el culpable, ni siquiera de una partida terminada', async () => {
+    const partidaId = await crearPartida(entorno.api);
+    await entorno.api.post(`/api/partidas/${partidaId}/arrestos`).send({ sospechosoId: ID_CARLA }).expect(201);
+
+    for (const ruta of ['/api/partidas', '/api/partidas?estado=ganada', `/api/partidas?casoId=${ID_CASO}`]) {
+      const respuesta = await entorno.api.get(ruta);
+
+      assert.equal(respuesta.status, 200, ruta);
+      assert.doesNotMatch(respuesta.text, TEXTO_DE_CULPABILIDAD, ruta);
+      assert.doesNotMatch(respuesta.text, /acusa|sospechoso|Carla/i, ruta);
+      for (const partida of respuesta.body) assert.deepEqual(Object.keys(partida).sort(), CAMPOS_DE_PARTIDA, ruta);
+    }
+  });
+
+  test('un casoId que no es un único entero positivo responde 400', async () => {
+    for (const casoId of ['abc', '0', '-1', '1.5', '1e2', '99999999999999999999', '', '1&casoId=2']) {
+      const respuesta = await entorno.api.get(`/api/partidas?casoId=${casoId}`);
+
+      assert.equal(respuesta.status, 400, casoId);
+      assert.deepEqual(respuesta.body, { error: 'El parámetro casoId debe ser un número entero positivo.' }, casoId);
+    }
+  });
+
+  test('un estado repetido responde 400', async () => {
+    const respuesta = await entorno.api.get('/api/partidas?estado=en_curso&estado=perdida');
+
+    assert.equal(respuesta.status, 400);
+    assert.deepEqual(respuesta.body, { error: 'El parámetro estado debe indicarse una sola vez.' });
+  });
+
+  test('los filtros no permiten inyección SQL', async () => {
+    const filasAntes = contarFilasPorTabla(entorno.baseDeDatos);
+
+    const porCaso = await entorno.api.get('/api/partidas?casoId=1%20OR%201=1');
+    const porEstado = await entorno.api.get("/api/partidas?estado=en_curso'%20OR%20'1'='1");
+    const conSentencia = await entorno.api.get('/api/partidas?estado=perdida;%20DELETE%20FROM%20partida');
+
+    assert.equal(porCaso.status, 400);
+    assert.equal(porEstado.status, 200);
+    assert.deepEqual(porEstado.body, []);
+    assert.equal(conSentencia.status, 200);
+    assert.deepEqual(conSentencia.body, []);
     afirmarTablasIntactas(entorno.baseDeDatos, filasAntes);
   });
 });
