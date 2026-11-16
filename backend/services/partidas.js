@@ -18,6 +18,24 @@ function obtenerPartida(baseDeDatos, partidaId) {
   return partida ?? null;
 }
 
+/**
+ * Partidas con los mismos campos que obtenerPartida, de la más reciente a la
+ * más antigua. Los filtros son opcionales: un filtro ausente (null) no
+ * restringe. Un estado que no existe en el CHECK de la tabla no se revalida:
+ * simplemente no coincide con ninguna fila.
+ */
+function listarPartidas(baseDeDatos, { estado = null, casoId = null } = {}) {
+  return baseDeDatos
+    .prepare(
+      `SELECT id, caso_id AS casoId, estado, fecha_inicio AS fechaInicio
+       FROM partida
+       WHERE (@estado IS NULL OR estado = @estado)
+         AND (@casoId IS NULL OR caso_id = @casoId)
+       ORDER BY fecha_inicio DESC, id DESC`,
+    )
+    .all({ estado, casoId });
+}
+
 function crearPartida(baseDeDatos, casoId) {
   const { lastInsertRowid } = baseDeDatos.prepare('INSERT INTO partida (caso_id) VALUES (?)').run(casoId);
   return obtenerPartida(baseDeDatos, Number(lastInsertRowid));
@@ -70,4 +88,4 @@ function registrarArresto(baseDeDatos, partidaId, sospechosoId) {
   return arrestar();
 }
 
-module.exports = { obtenerPartida, crearPartida, registrarArresto };
+module.exports = { obtenerPartida, listarPartidas, crearPartida, registrarArresto };

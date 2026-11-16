@@ -1,6 +1,9 @@
-// Ayudas de DOM y de formato compartidas por las pantallas.
+// Ayudas de DOM compartidas por las pantallas.
 // Todo texto que llega de la API se inserta como nodo de texto (textContent o
-// append de un string): nunca con innerHTML.
+// append de un string): nunca con innerHTML. Los textos de la interfaz salen
+// del catálogo de i18n/; el formato de fechas, de i18n/traductor.js.
+
+import { t, traducirEnum, traducirErrorDeApi } from './i18n/traductor.js';
 
 let contadorIds = 0;
 
@@ -41,11 +44,16 @@ export function mensajeVacio(texto) {
   return crear('p', { clase: 'estado', texto });
 }
 
-/** Mensaje para el jugador: el que devolvió la API, o uno genérico si el error ocurrió en la interfaz. */
+/**
+ * Mensaje para el jugador en el idioma activo: el error propio de la interfaz
+ * (con clave del catálogo), el que devolvió la API (traducido si se conoce) o
+ * uno genérico si el error ocurrió en el código de la interfaz.
+ */
 export function textoDeError(error) {
-  if (error?.name === 'ErrorDeApi') return error.message;
+  if (typeof error?.clave === 'string') return t(error.clave, error.parametros);
+  if (error?.name === 'ErrorDeApi') return traducirErrorDeApi(error.message);
   console.error(error);
-  return 'Ocurrió un error inesperado en la interfaz. Recargue la página para continuar.';
+  return t('comun.errorInesperado');
 }
 
 /**
@@ -53,27 +61,33 @@ export function textoDeError(error) {
  * reintentar la carga o un enlace que indica cómo seguir.
  *
  * @param {unknown} error
- * @param {{ reintentar?: () => void, enlace?: { texto: string, href: string } }} [salida]
+ * @param {{ reintentar?: () => void, enlace?: { texto: string, href: string, alActivar?: () => void } }} [salida]
  */
 export function mensajeDeError(error, { reintentar, enlace } = {}) {
   const bloque = crear('div', { clase: 'alerta', atributos: { role: 'alert' } }, [
     crear('p', { texto: textoDeError(error) }),
   ]);
   if (reintentar) {
-    const boton = crear('button', { clase: 'boton boton--secundario', texto: 'Reintentar', atributos: { type: 'button' } });
+    const boton = crear('button', { clase: 'boton boton--secundario', texto: t('comun.reintentar'), atributos: { type: 'button' } });
     boton.addEventListener('click', reintentar);
     bloque.append(boton);
   }
-  if (enlace) bloque.append(crear('a', { texto: enlace.texto, atributos: { href: enlace.href } }));
+  if (enlace) {
+    const vinculo = crear('a', { texto: enlace.texto, atributos: { href: enlace.href } });
+    if (enlace.alActivar) vinculo.addEventListener('click', enlace.alActivar);
+    bloque.append(vinculo);
+  }
   return bloque;
 }
 
 /**
  * Deshabilita los botones mientras se espera a la API, para que la solicitud
  * no se envíe dos veces, y los restaura al terminar, con éxito o con error.
+ * Se conservan los nodos originales del botón (por ejemplo, un texto solo
+ * para lectores de pantalla).
  */
 export async function mientrasEspera(boton, textoEspera, accion, otrosBotones = []) {
-  const textoOriginal = boton.textContent;
+  const contenidoOriginal = [...boton.childNodes];
   const botones = [boton, ...otrosBotones];
   for (const cada of botones) cada.disabled = true;
   boton.setAttribute('aria-busy', 'true');
@@ -83,7 +97,7 @@ export async function mientrasEspera(boton, textoEspera, accion, otrosBotones = 
   } finally {
     for (const cada of botones) cada.disabled = false;
     boton.removeAttribute('aria-busy');
-    boton.textContent = textoOriginal;
+    boton.replaceChildren(...contenidoOriginal);
   }
 }
 
@@ -129,60 +143,8 @@ const CLASES_DE_SELLO = new Map([
   ['perdida', 'sello--perdida'],
 ]);
 
-/** Sello con el estado de la partida tal como lo devolvió la API. */
+/** Sello con el estado de la partida tal como lo devolvió la API, en el idioma activo. */
 export function crearSello(estado, claseExtra = '') {
   const clases = ['sello', CLASES_DE_SELLO.get(estado), claseExtra].filter(Boolean).join(' ');
-  return crear('span', { clase: clases, texto: textoLegible(estado) });
-}
-
-/* Formato */
-
-const PATRON_FECHA = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
-
-function partesDeFecha(texto) {
-  const partes = PATRON_FECHA.exec(String(texto ?? ''));
-  if (partes === null) return null;
-  const [, anio, mes, dia, hora, minuto, segundo] = partes;
-  return { anio, mes, dia, hora, minuto, segundo };
-}
-
-/** "2026-11-09 21:30:00" → "09/11/2026 21:30"; "2026-11-10" → "10/11/2026". Otro formato se muestra tal cual. */
-export function formatearFecha(texto) {
-  const partes = partesDeFecha(texto);
-  if (partes === null) return String(texto ?? '');
-  const fecha = `${partes.dia}/${partes.mes}/${partes.anio}`;
-  return partes.hora === undefined ? fecha : `${fecha} ${partes.hora}:${partes.minuto}`;
-}
-
-/** Horario de una coartada: "09/11/2026, de 21:00 a 22:00" si empieza y termina el mismo día. */
-export function formatearRango(desde, hasta) {
-  const inicio = partesDeFecha(desde);
-  const fin = partesDeFecha(hasta);
-  const mismoDia = inicio !== null && fin !== null && inicio.hora !== undefined && fin.hora !== undefined
-    && inicio.anio === fin.anio && inicio.mes === fin.mes && inicio.dia === fin.dia;
-  if (!mismoDia) return `${formatearFecha(desde)} a ${formatearFecha(hasta)}`;
-  return `${inicio.dia}/${inicio.mes}/${inicio.anio}, de ${inicio.hora}:${inicio.minuto} a ${fin.hora}:${fin.minuto}`;
-}
-
-/** Marca de tiempo que SQLite guarda en UTC (CURRENT_TIMESTAMP), mostrada en la hora local del jugador. */
-export function formatearMarcaUtc(texto) {
-  const partes = partesDeFecha(texto);
-  if (partes === null || partes.hora === undefined) return formatearFecha(texto);
-  const instante = new Date(Date.UTC(
-    Number(partes.anio), Number(partes.mes) - 1, Number(partes.dia),
-    Number(partes.hora), Number(partes.minuto), Number(partes.segundo ?? 0),
-  ));
-  return instante.toLocaleString('es', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
-  });
-}
-
-/** Valor de la base listo para leer: "registro_digital" → "registro digital". */
-export function textoLegible(valor) {
-  return String(valor ?? '').replaceAll('_', ' ');
-}
-
-/** "1 evidencia", "3 evidencias". */
-export function contar(cantidad, singular, plural) {
-  return `${cantidad} ${cantidad === 1 ? singular : plural}`;
+  return crear('span', { clase: clases, texto: traducirEnum('estadoPartida', estado) });
 }

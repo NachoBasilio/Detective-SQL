@@ -5,13 +5,16 @@ const {
   MENSAJE_ID_INVALIDO,
   leerIdDeRuta,
   leerIdDelCuerpo,
+  leerIdDeConsulta,
   mensajeCampoInvalido,
+  mensajeParametroInvalido,
   responderConsultaPorId,
   traducirErrorDeSqlite,
 } = require('./utilidades');
 
 const PARTIDA_INEXISTENTE = 'La partida no existe.';
 const PARTIDA_TERMINADA = 'La partida ya terminó: solo se permite un arresto por partida.';
+const ESTADO_REPETIDO = 'El parámetro estado debe indicarse una sola vez.';
 
 // Errores de SQLite previstos al crear una partida.
 const ERRORES_AL_CREAR = [
@@ -39,6 +42,21 @@ function responderOperacion(res, operacion, traducciones, responder) {
     return res.status(traduccion.estado).json({ error: traduccion.mensaje });
   }
   return responder(resultado);
+}
+
+/**
+ * GET /api/partidas con filtros opcionales ?estado= y ?casoId=. Solo se valida
+ * el formato: un estado que no existe devuelve una lista vacía, porque los
+ * valores posibles los define el CHECK de la tabla, no el backend.
+ */
+function listar(req, res) {
+  const { estado, casoId: casoIdRecibido } = req.query;
+  if (estado !== undefined && typeof estado !== 'string') return res.status(400).json({ error: ESTADO_REPETIDO });
+  const casoId = leerIdDeConsulta(casoIdRecibido);
+  if (casoId === null) return res.status(400).json({ error: mensajeParametroInvalido('casoId') });
+
+  const filtros = { estado: estado ?? null, casoId: casoId ?? null };
+  return res.json(servicioPartidas.listarPartidas(req.app.locals.baseDeDatos, filtros));
 }
 
 function crear(req, res) {
@@ -72,6 +90,7 @@ function arrestar(req, res) {
 }
 
 module.exports = {
+  listar,
   crear,
   obtener: responderConsultaPorId(servicioPartidas.obtenerPartida, PARTIDA_INEXISTENTE),
   arrestar,

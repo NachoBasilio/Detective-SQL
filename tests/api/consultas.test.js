@@ -33,6 +33,10 @@ const RUTAS_GET_DEL_CASO = [
   '/api/sospechosos/4/interrogatorios',
   '/api/casos/1/investigacion/coartadas',
   '/api/casos/1/investigacion/matriz',
+  '/api/partidas',
+  '/api/partidas?estado=perdida',
+  '/api/partidas?estado=en_curso',
+  '/api/partidas?casoId=1',
   '/api/partidas/1',
 ];
 

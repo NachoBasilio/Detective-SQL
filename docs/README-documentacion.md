@@ -86,7 +86,7 @@ Contenido de la semilla frente al mínimo de la consigna ("Un caso, 4 sospechoso
 | R5 | Arrestar al culpable deja la partida `ganada`; a un inocente, `perdida`. | Base: al insertar la acusación, el trigger `trg_acusacion_cerrar_partida` cierra la partida según `es_culpable`, y `trg_partida_validar_cierre` controla que el resultado coincida |
 | R6 | Una partida terminada no cambia su resultado ni ningún otro dato, no se reabre, y la acusación no se modifica ni se borra. | Base: triggers `trg_partida_finalizada_inmutable`, `trg_acusacion_no_update` y `trg_acusacion_no_delete` |
 | R7 | El culpable no se revela antes del arresto. | API: ninguna consulta previa al arresto lee `es_culpable` |
-| R8 | El jugador puede iniciar una partida nueva en cualquier momento. Cada partida queda registrada. | API: `POST /api/partidas` |
+| R8 | El jugador puede iniciar una partida nueva en cualquier momento. Cada partida queda registrada, y las que siguen en curso se pueden retomar desde el expediente. | API: `POST /api/partidas` y `GET /api/partidas?estado=en_curso` |
 | R9 | Las partidas no cambian el estado del caso: el caso sigue `abierto` para nuevas partidas. | API: el arresto no modifica `caso` |
 
 Cómo se razona el caso: cada evidencia puede **incriminar**, **exculpar** o mostrar la **presencia** de un sospechoso, con un peso de 1 a 5. Algunas evidencias tienen una hora demostrada (`hora_indicio`) y un lugar acreditado (`lugar_acreditado_id`): el lugar donde ocurrió el hecho que prueban, que puede ser distinto de la escena donde se encontraron. El culpable es quien reúne pruebas incriminatorias de distinto tipo en la escena principal, un registro digital que acredita el lugar del crimen cerca de las 21:30 y ninguna prueba que lo ubique en otro lugar a esa hora.
@@ -109,6 +109,7 @@ Cómo se razona el caso: cada evidencia puede **incriminar**, **exculpar** o mos
 | 7 | Acusación | Elige un sospechoso, presiona **Revisar la orden de arresto** y confirma con **Emitir orden de arresto** | `POST /api/partidas/:id/arrestos` con `{ "sospechosoId": 3 }` | Transacción de arresto (ver diagrama). |
 | 8 | Resultado | Ve si ganó o perdió y quién era el culpable | Ninguna: usa la respuesta del arresto | — |
 | 9 | Resultado | Presiona **Iniciar una partida nueva** | `POST /api/partidas` | Nueva fila en `partida`. Las anteriores quedan guardadas. |
+| 10 | Expediente | Ve las partidas en curso del caso y presiona **Retomar** en una | `GET /api/partidas?estado=en_curso&casoId=1` al mostrar el expediente y `GET /api/partidas/:id` al retomar | Solo lectura de `partida`. Si la partida ya terminó, no se retoma y la lista se actualiza. Las terminadas no se listan, para no revelar el culpable por GET. |
 
 Si el jugador recarga la página, el frontend recupera la partida con `GET /api/partidas/:id`, que devuelve solo `id`, `casoId`, `estado` y `fechaInicio`. Si la partida ya terminó, la pantalla de resultado se restaura desde la respuesta del arresto que el navegador guardó en `sessionStorage`, solo si corresponde a esa partida y su estado coincide con el que devuelve la API; si no coincide, se muestra el aviso de que la partida terminó. Así, recargar no hace que la API tenga que revelar al culpable de una partida.
 
@@ -646,7 +647,7 @@ Un solo servidor local (`npm start`) sirve la API y el frontend en `http://local
 | Rutas | [`backend/routes/`](../backend/routes/) | Asociar cada URL con su controlador. |
 | Controladores | [`backend/controllers/`](../backend/controllers/) | Validar el formato de los datos de entrada y traducir los errores de SQLite a códigos HTTP. |
 | Servicios | [`backend/services/`](../backend/services/) | Ejecutar las consultas parametrizadas y la transacción de arresto. |
-| Frontend | [`frontend/`](../frontend/) | Cuatro pantallas en HTML, CSS y JavaScript. `js/api.js` hace todas las solicitudes; `js/app.js` maneja la navegación y la partida actual; un módulo por pantalla. Sistema visual: [`design.md`](design.md). |
+| Frontend | [`frontend/`](../frontend/) | Cuatro pantallas en HTML, CSS y JavaScript. `js/api.js` hace todas las solicitudes; `js/app.js` maneja la navegación y la partida actual; un módulo por pantalla; `js/pestanas.js`, las pestañas de la investigación; `js/preferencias.js`, el idioma y el tema; `js/i18n/`, los textos en español e inglés (la base y la API siguen en español). Sistema visual: [`design.md`](design.md). |
 
 Principios:
 
@@ -682,6 +683,7 @@ Descartado por la consigna: React, Next.js, ORMs, servicios externos y autentica
 | 2026-11-15 | Linux (WSL2), Node.js 25.1.0, npm 11.6.2 | `npm test` | 147 tests en 24 suites: 147 aprobados, 0 fallidos, 0 omitidos. |
 | 2026-11-15 | Copia limpia del repositorio, sin `node_modules` | `npm install`, `npm run db:init`, `npm test` | Instalación sin errores, base creada en `database/detective.db`, 147 de 147 tests aprobados. |
 | 2026-11-15 | Windows, Node.js 22.14.0 (prueba de un integrante del equipo) | `npm test` | 147 de 147 tests aprobados. Informado en el [comentario del PR #7](https://github.com/NachoBasilio/Detective-SQL/pull/7#issuecomment-6899521129). |
+| 2026-11-15 | Windows, Node.js 22.22.3 (mejoras visuales: partidas en curso, idiomas, tema oscuro) | `npm test` | 166 tests en 26 suites: 166 aprobados, 0 fallidos, 0 omitidos. |
 
 Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearBase(':memory:')`), salvo el test de persistencia y los que comprueban que `crearBase` borra un archivo creado en una inicialización rechazada; esos usan archivos en una carpeta temporal del sistema y la borran al terminar.
 
@@ -694,8 +696,13 @@ Los tests no tocan la base del juego: cada uno crea una base en memoria (`crearB
 | [`tests/database/transacciones.test.js`](../tests/database/transacciones.test.js) | 6 | Demostraciones sin `UPDATE`, `COMMIT`, `ROLLBACK` y transacción fallida. |
 | [`tests/api/aplicacion.test.js`](../tests/api/aplicacion.test.js) | 6 | 404 y 400 en JSON, 500 sin detalles, archivos estáticos, claves foráneas obligatorias. |
 | [`tests/api/consultas.test.js`](../tests/api/consultas.test.js) | 20 | Endpoints GET, lugar acreditado en evidencias y coartadas, secreto del culpable, 400, 404 e inyección SQL por la ruta. |
-| [`tests/api/partidas.test.js`](../tests/api/partidas.test.js) | 17 | Creación de partidas, arrestos, 400, 404, 409, inyección SQL, falla del cierre automático, `ROLLBACK`, resultado leído del estado guardado y persistencia. |
-| **Total** | **147** | 104 de base de datos y 43 de API. |
+| [`tests/api/partidas.test.js`](../tests/api/partidas.test.js) | 23 | Creación y lista de partidas (filtros por estado y caso, orden, campos sin acusado ni culpable), arrestos, 400, 404, 409, inyección SQL, falla del cierre automático, `ROLLBACK`, resultado leído del estado guardado y persistencia. |
+| [`tests/frontend/design-system.test.js`](../tests/frontend/design-system.test.js) | 2 | Tokens reutilizables y catálogo de componentes documentado. |
+| [`tests/frontend/tema-oscuro.test.js`](../tests/frontend/tema-oscuro.test.js) | 5 | El tema oscuro redefine los tokens de color y sombra, contraste mínimo en los dos temas, colores solo en `:root`, tema claro predeterminado y las mismas claves de `localStorage` en los dos scripts de preferencias. |
+| [`tests/frontend/i18n.test.js`](../tests/frontend/i18n.test.js) | 6 | Catálogos `es` y `en` con las mismas claves, traducción de los valores fijos, de los textos de la semilla y de los errores de la API, plurales y fechas. |
+| **Total** | **166** | 104 de base de datos, 49 de API y 13 del frontend. |
+
+Los tests de `tests/frontend/i18n.test.js` importan los ES modules de `frontend/js/i18n/` desde CommonJS. Para eso existe [`frontend/package.json`](../frontend/package.json), con `"type": "module"`: sin él, Node.js 22.0 a 22.6 no puede importarlos y el test falla; las versiones posteriores los importan con una advertencia (`MODULE_TYPELESS_PACKAGE_JSON`). No se debe borrar.
 
 ### Requisitos de la consigna para la base de datos
 
@@ -809,7 +816,7 @@ Detalle de las dos últimas filas: entradas "Correcciones de la auditoría final
 | Limitación | Detalle | Mejora propuesta |
 |---|---|---|
 | Textos de la semilla sin tildes | Algunos textos se guardaron sin tildes ("victima", "Afirmo", "Cafe Bahia") y la aplicación los muestra tal como están. | Corregirlos en `database/detective.sql`. |
-| Partidas abandonadas | Iniciar una partida nueva deja la anterior `en_curso`: la API no tiene forma de abandonarla. | Agregar un estado o un endpoint para abandonar una partida. |
+| Partidas abandonadas | Iniciar una partida nueva deja la anterior `en_curso`. El expediente la lista para retomarla, pero la API no tiene forma de abandonarla. | Agregar un estado o un endpoint para abandonar una partida. |
 | Errores de SQLite identificados por texto | La API reconoce cada error por un fragmento de su mensaje. Si se cambia el texto de un trigger, ese error pasa a responder 500. | Identificar los errores por un código estable o cubrir cada mensaje con un test. |
 | Exactamente un culpable solo al inicializar | `validarCasosJugables` lo comprueba al crear la base. Después, un `UPDATE` de `es_culpable` podría dejar un caso sin culpable: el índice `uq_un_culpable_por_caso` solo impide un segundo. No se usó un trigger porque bloquearía cargar un caso de a un sospechoso. | Repetir la validación al cargar cada caso nuevo. |
 | C3 y `es_culpable` no están sincronizados | Si se editan a mano evidencias, vínculos o lugares acreditados, C3 puede deducir a otra persona, o a nadie, sin que la base lo impida. La coincidencia la sostienen los datos semilla y los tests. | Volver a ejecutar `npm test` después de cualquier cambio de datos, o comprobar al inicializar que C3 devuelve al culpable marcado. |

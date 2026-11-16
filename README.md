@@ -95,7 +95,7 @@ npm start
 npm test
 ```
 
-- Ejecuta 147 tests con el runner integrado de Node.js (`node:test`): 104 de base de datos (`tests/database/`) y 43 de la API (`tests/api/`).
+- Ejecuta 166 tests con el runner integrado de Node.js (`node:test`): 104 de base de datos (`tests/database/`), 49 de la API (`tests/api/`) y 13 del frontend (`tests/frontend/`: sistema visual, tema oscuro y traducción).
 - Cada test crea su propia base en memoria (o un archivo temporal del sistema): no hace falta `db:init` ni `npm start`, y nunca se modifica `database/detective.db`.
 - Para ejecutar un solo archivo: `node --test tests/database/consultas.test.js`.
 
@@ -116,6 +116,7 @@ Todas las respuestas son JSON. Los errores tienen la forma `{ "error": "<mensaje
 | GET | `/api/sospechosos/:id/interrogatorios` | Declaraciones y contradicciones de un sospechoso. |
 | GET | `/api/casos/:id/investigacion/coartadas` | Descarte de coartadas (consulta C1 filtrada por caso). |
 | GET | `/api/casos/:id/investigacion/matriz` | Matriz de evidencias, leída de la vista `vista_matriz_evidencias`. |
+| GET | `/api/partidas` | Partidas con `id`, `casoId`, `estado` y `fechaInicio`, de la más reciente a la más antigua. Filtros opcionales: `?estado=en_curso` y `?casoId=1` (un `casoId` que no es un entero positivo responde 400). Nunca incluye el acusado ni el culpable. El expediente la usa para retomar partidas en curso. |
 | POST | `/api/partidas` | Crea una partida. Cuerpo: `{ "casoId": 1 }`. Responde 201. |
 | GET | `/api/partidas/:id` | Estado de una partida (`en_curso`, `ganada` o `perdida`), sin el acusado ni el culpable. |
 | POST | `/api/partidas/:id/arrestos` | Registra el arresto y cierra la partida. Cuerpo: `{ "sospechosoId": 3 }`. Responde 201 con el resultado y, recién ahí, el culpable. |

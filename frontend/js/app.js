@@ -1,13 +1,17 @@
 // Punto de entrada: estado de la partida actual, navegación entre las cuatro
 // pantallas con el hash de la URL (para que el botón "atrás" del navegador
-// funcione) y recuperación de la partida al recargar la página.
+// funcione) y con un deslizamiento lateral según su orden, recuperación de la
+// partida al recargar la página y preferencias de idioma y tema.
 
 import * as api from './api.js';
 import * as expediente from './expediente.js';
 import * as investigacion from './investigacion.js';
 import * as acusacion from './acusacion.js';
 import * as resultado from './resultado.js';
+import { crearDeslizador, prefiereMenosMovimiento } from './deslizamiento.js';
 import { crear, crearSello, textoDeError } from './dom.js';
+import { t } from './i18n/traductor.js';
+import { iniciarPreferencias } from './preferencias.js';
 
 /**
  * Estado del juego en memoria. `arresto` es la respuesta del arresto: es el
@@ -15,17 +19,19 @@ import { crear, crearSello, textoDeError } from './dom.js';
  */
 const juego = { partida: null, arresto: null };
 
+// En el orden del juego: ese orden decide hacia qué lado se desliza el cambio de pantalla.
 const PANTALLAS = {
-  expediente: { modulo: expediente, titulo: 'Expediente', disponible: () => true },
-  investigacion: { modulo: investigacion, titulo: 'Investigación', disponible: () => juego.partida !== null },
-  acusacion: { modulo: acusacion, titulo: 'Acusación', disponible: () => juego.partida !== null },
-  resultado: { modulo: resultado, titulo: 'Resultado', disponible: () => juego.arresto !== null },
+  expediente: { modulo: expediente, disponible: () => true },
+  investigacion: { modulo: investigacion, disponible: () => juego.partida !== null },
+  acusacion: { modulo: acusacion, disponible: () => juego.partida !== null },
+  resultado: { modulo: resultado, disponible: () => juego.arresto !== null },
 };
+const ORDEN_DE_PANTALLAS = Object.keys(PANTALLAS);
 
 const MOTIVOS_NO_DISPONIBLE = {
-  investigacion: 'Para investigar, primero inicie una partida desde el expediente.',
-  acusacion: 'Para acusar, primero inicie una partida desde el expediente.',
-  resultado: 'El resultado aparece después de emitir una orden de arresto en una partida de esta sesión.',
+  investigacion: 'avisos.investigacionNoDisponible',
+  acusacion: 'avisos.acusacionNoDisponible',
+  resultado: 'avisos.resultadoNoDisponible',
 };
 
 /* Partida guardada: sessionStorage es solo una comodidad para sobrevivir a una
@@ -105,20 +111,40 @@ function olvidarArresto() {
 
 /* Cabecera, avisos y navegación */
 
-function mostrarAviso(texto) {
-  document.getElementById('aviso').textContent = texto;
+// El aviso se guarda como una función que arma el texto, para volver a
+// escribirlo en el idioma nuevo si el jugador lo cambia.
+let aviso = null;
+
+function mostrarAviso(armarTexto) {
+  aviso = armarTexto;
+  dibujarAviso();
+}
+
+function borrarAviso() {
+  mostrarAviso(null);
+}
+
+function dibujarAviso() {
+  document.getElementById('aviso').textContent = aviso === null ? '' : aviso();
 }
 
 function actualizarCabecera() {
   const zona = document.getElementById('estado-partida');
   if (juego.partida === null) {
-    zona.replaceChildren('Sin partida iniciada');
+    zona.replaceChildren(t('cabecera.sinPartida'));
     return;
   }
-  zona.replaceChildren(crear('span', { texto: `Partida n.º ${juego.partida.id}` }), crearSello(juego.partida.estado));
+  zona.replaceChildren(crear('span', { texto: t('comun.partida', { id: juego.partida.id }) }), crearSello(juego.partida.estado));
 }
 
 let pantallaActual = 'expediente';
+
+// Las cuatro secciones se deslizan dentro de .pantallas con el mismo movimiento que las pestañas de la investigación.
+const deslizadorDePantallas = crearDeslizador({
+  contenedor: document.querySelector('.pantallas'),
+  elementos: ORDEN_DE_PANTALLAS.map((nombre) => document.getElementById(`pantalla-${nombre}`)),
+  visibleEnReposo: () => document.getElementById(`pantalla-${pantallaActual}`),
+});
 
 function actualizarNavegacion() {
   for (const enlace of document.querySelectorAll('.navegacion [data-pantalla]')) {
@@ -140,30 +166,59 @@ function nombreDesdeHash() {
   return Object.hasOwn(PANTALLAS, nombre) ? nombre : null;
 }
 
-function mostrarPantalla(nombrePedido, { moverFoco }) {
+/**
+ * Muestra una pantalla. Con `animar`, el cambio a otra pantalla se desliza
+ * según el orden del juego: la siguiente entra por la derecha y la anterior
+ * por la izquierda. La carga inicial, el reemplazo por el expediente cuando la
+ * pantalla pedida no está disponible y prefers-reduced-motion cambian sin movimiento.
+ */
+function mostrarPantalla(nombrePedido, { moverFoco, animar = false }) {
   let nombre = nombrePedido;
+  let conMovimiento = animar;
   if (!PANTALLAS[nombre].disponible()) {
     // Un aviso previo (por ejemplo, "la partida ya terminó" al recargar) explica mejor qué pasó.
-    if (document.getElementById('aviso').textContent === '') mostrarAviso(MOTIVOS_NO_DISPONIBLE[nombre]);
+    if (aviso === null) mostrarAviso(() => t(MOTIVOS_NO_DISPONIBLE[nombre]));
     nombre = 'expediente';
     history.replaceState(null, '', '#expediente');
+    conMovimiento = false;
   }
 
+  const anterior = pantallaActual;
+  if (nombre !== anterior) PANTALLAS[anterior].modulo.alSalir?.();
   pantallaActual = nombre;
-  for (const seccion of document.querySelectorAll('main > section[data-pantalla]')) {
-    seccion.hidden = seccion.dataset.pantalla !== nombre;
-  }
-  document.title = `${PANTALLAS[nombre].titulo} · Detective SQL`;
+  // Un deslizamiento anterior que no terminó se corta acá: en reposo solo queda visible la pantalla nueva.
+  deslizadorDePantallas.dejarEnReposo();
+  const seccion = document.getElementById(`pantalla-${nombre}`);
+  const saliente = document.getElementById(`pantalla-${anterior}`);
+  conMovimiento = conMovimiento && nombre !== anterior && !prefiereMenosMovimiento();
+  // La pantalla nueva entra al flujo y la anterior queda superpuesta mientras sale: la cabecera no se mueve.
+  if (conMovimiento) deslizadorDePantallas.prepararMovimiento(seccion, saliente);
+  document.title = t('documento.titulo', { pantalla: t(`pantallas.${nombre}`) });
   actualizarNavegacion();
 
-  const seccion = document.getElementById(`pantalla-${nombre}`);
   PANTALLAS[nombre].modulo.mostrar(seccion, contexto);
+  // El foco se mueve antes de que empiece el movimiento: si la página tiene que
+  // desplazarse hasta el título, lo hace una sola vez y no a mitad del deslizamiento.
   if (moverFoco) seccion.querySelector('h1').focus();
+  if (conMovimiento) {
+    const sentido = ORDEN_DE_PANTALLAS.indexOf(nombre) > ORDEN_DE_PANTALLAS.indexOf(anterior) ? 1 : -1;
+    deslizadorDePantallas.animarAvance(saliente, seccion, sentido, 0, 1);
+  }
 }
 
 function ir(nombre) {
   if (location.hash === `#${nombre}`) mostrarPantalla(nombre, { moverFoco: true });
   else location.hash = nombre;
+}
+
+/** Deja la partida como actual: sin resultado, guardada para sobrevivir a una recarga y lista para investigar. */
+function establecerPartida(partida) {
+  juego.partida = partida;
+  juego.arresto = null;
+  olvidarArresto();
+  guardarPartida(partida.id);
+  actualizarCabecera();
+  ir('investigacion');
 }
 
 /** Lo que las pantallas pueden leer y hacer sobre el estado del juego. */
@@ -172,13 +227,18 @@ const contexto = {
 
   /** Crea la partida en la API; los errores llegan a la pantalla que llamó. */
   async iniciarPartida(casoId) {
-    const partida = await api.crearPartida(casoId);
-    juego.partida = partida;
-    juego.arresto = null;
-    olvidarArresto();
-    guardarPartida(partida.id);
-    actualizarCabecera();
-    ir('investigacion');
+    establecerPartida(await api.crearPartida(casoId));
+  },
+
+  /**
+   * Retoma una partida de la lista de partidas en curso. La API confirma que
+   * sigue en curso; si ya terminó, devuelve null y la partida actual no cambia.
+   */
+  async retomarPartida(partidaId) {
+    const partida = await api.obtenerPartida(partidaId);
+    if (partida.estado !== 'en_curso') return null;
+    establecerPartida(partida);
+    return partida;
   },
 
   /** Guarda la respuesta del arresto (con el veredicto que calculó SQLite) y muestra el resultado. */
@@ -190,6 +250,18 @@ const contexto = {
     ir('resultado');
   },
 };
+
+/**
+ * Cambio de idioma: los datos del juego no se tocan. Se reescriben la
+ * cabecera y el aviso, las pantallas descartan lo que ya dibujaron y la
+ * pantalla actual se vuelve a dibujar sin mover el foco.
+ */
+function cambiarIdioma() {
+  actualizarCabecera();
+  dibujarAviso();
+  for (const { modulo } of Object.values(PANTALLAS)) modulo.invalidar?.();
+  mostrarPantalla(pantallaActual, { moverFoco: false });
+}
 
 /**
  * Recupera la partida guardada; la API dice si sigue en curso. Si ya terminó,
@@ -212,10 +284,10 @@ async function recuperarPartida() {
       return;
     }
     olvidarPartida();
-    mostrarAviso(`La partida n.º ${partida.id} ya terminó. Puede iniciar una partida nueva desde este expediente.`);
+    mostrarAviso(() => t('avisos.partidaTerminada', { id: partida.id }));
   } catch (error) {
     if (error?.estado === 400 || error?.estado === 404) olvidarPartida();
-    mostrarAviso(`No se pudo recuperar la partida guardada: ${textoDeError(error)}`);
+    mostrarAviso(() => t('avisos.partidaNoRecuperada', { detalle: textoDeError(error) }));
   }
 }
 
@@ -223,10 +295,13 @@ window.addEventListener('hashchange', () => {
   // Un hash que no es una pantalla (por ejemplo, "Ir al contenido") no cambia de pantalla.
   const nombre = nombreDesdeHash();
   if (nombre === null) return;
-  mostrarAviso('');
-  mostrarPantalla(nombre, { moverFoco: true });
+  borrarAviso();
+  mostrarPantalla(nombre, { moverFoco: true, animar: true });
 });
 
+// Los textos fijos se traducen antes de esperar a la API.
+iniciarPreferencias({ alCambiarIdioma: cambiarIdioma });
+actualizarCabecera();
 await recuperarPartida();
 actualizarCabecera();
 mostrarPantalla(nombreDesdeHash() ?? 'expediente', { moverFoco: false });

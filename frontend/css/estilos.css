@@ -23,6 +23,7 @@
   --color-aviso-fondo: #e8eef6;
   --color-aviso-texto: #1f3b63;
   --color-seleccion: #f0d98a;
+  --color-velo: rgb(28 26 23 / 0.55);
 
   /* Tipografía */
   --fuente-texto: Charter, "Bitstream Charter", "Sitka Text", Cambria, "Iowan Old Style", Georgia, serif;
@@ -51,14 +52,48 @@
   --borde-ancho-sello-grande: 7px;
   --control-altura-minima: max(44px, 2.75rem);
   --sombra-hoja: 0 1px 2px rgb(28 26 23 / 0.08), 0 12px 28px -16px rgb(28 26 23 / 0.35);
+  --sombra-dialogo: 0 2px 4px rgb(28 26 23 / 0.12), 0 24px 48px -16px rgb(28 26 23 / 0.5);
   --ancho-hoja: 68rem;
   --ancho-lectura: 70ch;
   --ancho-tabla-estandar: 36rem;
   --ancho-tabla-evidencias: 52rem;
   --ancho-confirmacion: 44rem;
   --duracion: 180ms;
+  --duracion-pestana: 300ms;
   --duracion-sello: 360ms;
   --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);
+  --curva-pestana: ease-out;
+}
+
+/* Tema oscuro opcional: el claro es el predeterminado y este se activa solo
+   con el botón de la cabecera (no sigue prefers-color-scheme). Mismas
+   familias de color, con la luminosidad invertida: papel oscuro, tinta clara. */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+
+  --color-fondo: #141210;
+  --color-hoja: #1f1c18;
+  --color-hoja-alterna: #2a2621;
+  --color-texto: #ede6d8;
+  --color-texto-suave: #b8ad9c;
+  --color-borde: #3b352d;
+  --color-borde-control: #8e8273;
+  --color-primario: #9fbde6;
+  --color-primario-hover: #bdd2ef;
+  --color-sobre-primario: #10151c;
+  --color-peligro: #f2a194;
+  --color-peligro-hover: #f6bcb2;
+  --color-exito: #9fd09b;
+  --color-foco: #f2a35a;
+  --color-error-fondo: #3b1f1a;
+  --color-error-texto: #f7c4bb;
+  --color-aviso-fondo: #1b2636;
+  --color-aviso-texto: #c5d7f0;
+  --color-seleccion: #6a5a1f;
+  --color-velo: rgb(0 0 0 / 0.65);
+
+  --sombra-hoja: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 28px -16px rgb(0 0 0 / 0.8);
+  --sombra-dialogo: 0 2px 4px rgb(0 0 0 / 0.5), 0 24px 48px -16px rgb(0 0 0 / 0.9);
 }
 
 /* Base */
@@ -183,15 +218,18 @@ a:hover {
 }
 
 .cabecera__interior {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "marca marca"
+    "estado preferencias";
   align-items: center;
-  justify-content: space-between;
   gap: var(--espacio-2) var(--espacio-4);
   padding-block: var(--espacio-3);
 }
 
 .marca {
+  grid-area: marca;
   display: flex;
   align-items: center;
   gap: var(--espacio-2);
@@ -206,12 +244,65 @@ a:hover {
 }
 
 .estado-partida {
+  grid-area: estado;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--espacio-3);
   color: var(--color-texto-suave);
   font-size: var(--texto-chico);
+}
+
+/* Preferencias: idioma y tema. Botones con aria-pressed; el estado activo se
+   ve como botón relleno, y el lector de pantalla lo anuncia como presionado. */
+
+.preferencias {
+  grid-area: preferencias;
+  display: flex;
+  gap: var(--espacio-2);
+}
+
+.preferencias__idioma {
+  display: flex;
+  gap: var(--espacio-2);
+}
+
+.preferencia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--control-altura-minima);
+  min-height: var(--control-altura-minima);
+  padding: 0 var(--espacio-2);
+  border: var(--borde-ancho) solid var(--color-borde-control);
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--color-texto);
+  font: inherit;
+  font-size: var(--texto-chico);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background-color var(--duracion) var(--curva-salida);
+}
+
+.preferencia:hover {
+  background: var(--color-hoja-alterna);
+}
+
+.preferencia[aria-pressed="true"] {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: var(--color-sobre-primario);
+}
+
+.preferencia[aria-pressed="true"]:hover {
+  background: var(--color-primario-hover);
+}
+
+.preferencia svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .navegacion ol {
@@ -461,6 +552,32 @@ a:hover {
   border-bottom: 0;
 }
 
+/* Partidas en curso del expediente */
+
+.lista-partidas {
+  padding: 0;
+  list-style: none;
+  border-top: var(--borde-ancho) solid var(--color-borde);
+}
+
+.lista-partidas > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espacio-2) var(--espacio-4);
+  padding-block: var(--espacio-3);
+  border-bottom: var(--borde-ancho) solid var(--color-borde);
+}
+
+.partida__titulo {
+  font-weight: 700;
+}
+
+.partida__actual {
+  color: var(--color-primario);
+}
+
 /* Pestañas de la investigación */
 
 .pestanas {
@@ -492,6 +609,35 @@ a:hover {
 
 [role="tabpanel"] {
   padding-top: var(--espacio-5);
+}
+
+/* Contenedor de los paneles: el desplazamiento vertical y el zoom quedan para
+   el navegador; el gesto horizontal lo maneja js/pestanas.js. */
+.paneles {
+  touch-action: pan-y pinch-zoom;
+}
+
+/* Deslizamiento lateral (js/deslizamiento.js): paneles de la investigación y
+   pantallas principales. */
+.deslizable {
+  position: relative;
+}
+
+/* Solo mientras se desliza: recorta para que no aparezca scroll horizontal. */
+.deslizable--en-movimiento {
+  overflow: hidden;
+  overflow: clip;
+}
+
+.deslizable--en-movimiento > * {
+  will-change: transform, opacity;
+}
+
+/* El elemento que sale (o el vecino durante el gesto) se superpone alineado
+   arriba: la altura la define un solo elemento y lo que está encima no se mueve. */
+.deslizable__superpuesto {
+  position: absolute;
+  inset: 0 0 auto;
 }
 
 .bloque + .bloque {
@@ -676,13 +822,45 @@ legend {
   font-size: var(--texto-chico);
 }
 
-.confirmacion {
-  display: grid;
-  gap: var(--espacio-4);
-  max-width: var(--ancho-confirmacion);
+/* Diálogo modal: solo para confirmar la orden de arresto, que es irreversible. */
+
+.dialogo {
+  width: min(100% - 2 * var(--espacio-4), var(--ancho-confirmacion));
+  max-width: none;
+  max-height: calc(100% - 2 * var(--espacio-4));
   padding: var(--espacio-5) var(--espacio-4);
+  overflow-y: auto;
   border: var(--borde-ancho) solid var(--color-peligro);
   border-radius: var(--radio);
+  background: var(--color-hoja);
+  color: var(--color-texto);
+  box-shadow: var(--sombra-dialogo);
+}
+
+.dialogo[open] {
+  display: grid;
+  gap: var(--espacio-4);
+  animation: aparecer var(--duracion) var(--curva-salida);
+}
+
+.dialogo__error:empty {
+  display: none;
+}
+
+.dialogo::backdrop {
+  background: var(--color-velo);
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(var(--espacio-2)) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* Sello: firma visual del juego */
@@ -697,6 +875,7 @@ legend {
   letter-spacing: 0.12em;
   line-height: 1.4;
   text-transform: uppercase;
+  white-space: nowrap;
   transform: rotate(-3deg);
 }
 
@@ -724,6 +903,11 @@ legend {
   border-width: var(--borde-ancho-sello-grande);
   font-size: clamp(1.5rem, 1rem + 3vw, 2.5rem);
   animation: sellar var(--duracion-sello) var(--curva-salida) both;
+}
+
+/* El mismo veredicto vuelto a dibujar (por ejemplo, al cambiar el idioma) no repite la animación. */
+.sello--quieto {
+  animation: none;
 }
 
 @keyframes sellar {
@@ -760,12 +944,21 @@ legend {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .confirmacion {
+  .dialogo {
     padding: var(--espacio-5) var(--espacio-6);
   }
 }
 
 @media (min-width: 46rem) {
+  .cabecera__interior {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "marca estado preferencias";
+  }
+
+  .estado-partida {
+    justify-content: flex-end;
+  }
+
   .pestanas {
     display: flex;
   }

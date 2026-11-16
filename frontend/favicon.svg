@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Excepción documentada en docs/design.md: la pestaña del navegador sigue el tema del sistema, no el de la página. Los dos colores copian el token color-primario del tema claro y del oscuro de estilos.css; si cambian, hay que actualizarlos juntos. -->
+  <style>
+    path { stroke: #1f3b63; }
+    @media (prefers-color-scheme: dark) {
+      path { stroke: #9fbde6; }
+    }
+  </style>
+  <path d="M2.5 10.5c3-1 16-1 19 0"/>
+  <path d="M6 10.2 7.5 5.4a1.6 1.6 0 0 1 2.2-1L12 5.3l2.3-.9a1.6 1.6 0 0 1 2.2 1L18 10.2"/>
+  <path d="M8.5 13.5c.8 1.6 2 2.5 3.5 2.5s2.7-.9 3.5-2.5"/>
+  <path d="M5 21c.4-2.4 1.8-3.9 4-4.5l3 2.5 3-2.5c2.2.6 3.6 2.1 4 4.5"/>
+</svg>
