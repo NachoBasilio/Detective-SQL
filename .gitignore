@@ -17,6 +17,9 @@ node_modules/
 npm-debug.log*
 *.log
 
+# Gentle AI local cache (machine-specific)
+.atl/
+
 # OS / editor
 .DS_Store
 Thumbs.db
