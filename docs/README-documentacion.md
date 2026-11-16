@@ -19,20 +19,26 @@ Base para el informe final del trabajo práctico integrador. Explica el juego, e
 
 Todo lo marcado como **Para completar por el equipo** en este documento. Nada de esto se puede generar sin el equipo.
 
-- [ ] Documento del equipo: nombre, roles, habilidades y recursos ([Equipo](#equipo)).
+- [x] Documento del equipo: roles, habilidades y recursos ([Equipo](#equipo)).
 - [ ] Reglas del juego escritas con palabras propias, si el equipo lo desea ([sección 1](#1-descripción-y-reglas-del-juego)).
 - [ ] Capturas de pantalla de la aplicación ([sección 2](#2-flujo-completo-de-una-partida)).
-- [ ] Capturas del MER y del modelo relacional dibujados en Miro ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo)).
 - [ ] Revisión final del diagrama del MER, que la IA dibujó a partir del modelo del equipo ([sección 4](#4-propuesta-de-mer-y-modelo-relacional-para-revisión-del-equipo) y [sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
 - [ ] Prueba de instalación en Windows y con la versión de Node.js de cada integrante: la suite ya pasó en Windows con Node.js 22.14.0; falta jugar una partida completa con `npm start` ([sección 13](#13-matriz-de-pruebas-y-resultados-verificables)).
 - [x] Revisión de las decisiones de la bitácora: cada entrada registra lo que se mergeó ([sección 14](#14-uso-de-ia-y-correcciones-realizadas)).
 
 ## Equipo
 
-Integrantes y roles: ver [Participantes en el README](../README.md#participantes).
+Integrantes y DNI: ver [Participantes en el README](../README.md#participantes).
 
-> [!IMPORTANT]
-> **Para completar por el equipo:** documento del equipo con nombre del equipo, rol de cada integrante, habilidades que aporta cada uno y recursos utilizados (equipos, software, horarios de trabajo, repositorio y tablero de Miro).
+| Integrante | Rol | Qué aporta |
+|---|---|---|
+| Ignacio Nicolas Basilio Buracco | Scrum Master | Planteo de la base de datos, idea del proyecto web y desarrollo. |
+| Lucas Gabriel Ruiz | Product Owner | Planteo de la base de datos, idea del proyecto web y desarrollo. |
+| Laureano Damián Iglesias | Desarrollador | Planteo de la base de datos, idea del proyecto web y desarrollo. |
+
+Scrum pide dos roles, Product Owner y Scrum Master; el resto del equipo son desarrolladores. Los tres integrantes plantearon juntos la base de datos y la idea de hacer un proyecto web, y los tres desarrollaron.
+
+Recursos: Node.js, SQLite (incluida en better-sqlite3), Express, `node:test` y Supertest; Git y GitHub con Gitflow (`main` es la rama principal, `dev` integra los cambios y cada cambio sale de `dev` en su propia rama); Mermaid para el MER; y asistentes de IA, registrados en la [bitácora](bitacora-ia.md).
 
 ---
 
@@ -177,7 +183,7 @@ Que una partida terminada tenga exactamente una acusación lo garantizan juntos 
 
 ## 4. Propuesta de MER y modelo relacional para revisión del equipo
 
-El MER completo, con atributos, PK, FK y cardinalidades en notación pata de gallo, está en [`docs/modelo-datos.md`](modelo-datos.md#mer) como diagrama Mermaid, listo para pasarlo a Miro.
+El MER completo, con atributos, PK, FK y cardinalidades en notación pata de gallo, está en [`docs/modelo-datos.md`](modelo-datos.md#mer) como diagrama Mermaid.
 
 Resumen: 9 tablas (8 entidades y 1 entidad asociativa) y 11 relaciones, detalladas en la [sección 3](#3-entidades-relaciones-y-cardinalidades). En el diagrama, la relación N:M entre sospechoso y evidencia se dibuja como dos líneas hacia `sospechoso_evidencia`, por eso aparecen 12 líneas.
 
@@ -207,7 +213,6 @@ Claves foráneas y únicas de cada tabla: [modelo relacional en `modelo-datos.md
 
 > [!IMPORTANT]
 > **Para completar por el equipo:**
-> - Dibujar el MER y el modelo relacional en Miro e insertar aquí las capturas.
 > - Hacer la revisión final del MER: el diagrama Mermaid de `modelo-datos.md` se generó con ayuda de IA a partir de las decisiones del equipo (ver [sección 14](#14-uso-de-ia-y-correcciones-realizadas)). El equipo debe comprobar cada entidad, atributo, clave y cardinalidad, corregir lo que no comparta y poder defenderlo en la presentación.
 
 ---
@@ -219,7 +224,7 @@ Detalle completo: [normalización en `modelo-datos.md`](modelo-datos.md#normaliz
 | Forma normal | Condición | Cómo se cumple |
 |---|---|---|
 | 1FN | Atributos atómicos, sin grupos repetidos. | Cada columna guarda un solo valor. La relación N:M entre sospechosos y evidencias es una tabla (`sospechoso_evidencia`), no una lista dentro de una columna. |
-| 2FN | 1FN y ningún atributo no clave depende de una parte de la clave. | La única PK compuesta es `(sospechoso_id, evidencia_id)`. `tipo_vinculo`, `peso` y `observaciones` dependen del par completo: la misma evidencia incrimina a uno y exculpa a otro. |
+| 2FN | 1FN y ningún atributo no clave depende de una parte de la clave. | La única PK compuesta es `(sospechoso_id, evidencia_id)`. `tipo_vinculo`, `peso` y `observaciones` dependen del par completo: no dependen solo de la evidencia (el modelo permite que una misma evidencia incrimine a un sospechoso y exculpe a otro) ni solo del sospechoso (Carla tiene vínculos que la incriminan y uno que la exculpa). |
 | 3FN | 2FN y ningún atributo no clave depende de otro atributo no clave. | En cada tabla los únicos determinantes son la PK y las claves candidatas (`caso.titulo`, `lugar.nombre`, `(sospechoso.caso_id, sospechoso.nombre)` y `acusacion.partida_id`). |
 
 Dependencias transitivas eliminadas:
@@ -803,7 +808,7 @@ Detalle de las dos últimas filas: entradas "Correcciones de la auditoría final
 
 > [!IMPORTANT]
 > **Para completar por el equipo:**
-> - Hacer la revisión final del diagrama del MER, que la IA dibujó a partir del modelo del equipo, y dejar registrado en la bitácora qué se mantuvo y qué se corrigió al pasarlo a Miro.
+> - Hacer la revisión final del diagrama del MER, que la IA dibujó a partir del modelo del equipo, y dejar registrado en la bitácora qué se mantuvo y qué se corrigió.
 > - Mantener la bitácora al día: cada entrada nueva registra el pedido, la respuesta y la decisión final del equipo.
 > - Registrar los pedidos importantes que falten, con pedido, respuesta y decisión.
 

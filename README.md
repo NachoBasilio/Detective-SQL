@@ -10,7 +10,7 @@ Juego de detectives en el que cada pista, interrogatorio y arresto se resuelve c
 
 - Ignacio Nicolas Basilio Buracco (41.175.914) — Scrum master
 - Lucas Gabriel Ruiz (36.424.613) — Product Owner
-- Laureano Damián Iglesias (38.636.342)
+- Laureano Damián Iglesias (38.636.342) — Desarrollador
 
 ## Inicio rápido
 
